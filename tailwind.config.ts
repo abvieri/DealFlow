@@ -70,6 +70,8 @@ export default {
       backgroundImage: {
         "gradient-primary": "var(--gradient-primary)",
         "gradient-subtle": "var(--gradient-subtle)",
+        "gradient-dark": "var(--gradient-dark)",
+        "gradient-accent": "var(--gradient-accent)",
       },
       borderRadius: {
         lg: "var(--radius)",
