@@ -12,6 +12,7 @@ import ProposalNew from "./pages/ProposalNew";
 import ProposalSimulate from "./pages/ProposalSimulate";
 import ProposalBuild from "./pages/ProposalBuild";
 import ProposalView from "./pages/ProposalView";
+import Users from "./pages/Users";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/proposal/:id/build" element={<Layout><ProposalBuild /></Layout>} />
             <Route path="/proposal/:id/edit" element={<Layout><ProposalBuild /></Layout>} />
             <Route path="/proposal/:id/view" element={<Layout><ProposalView /></Layout>} />
+            <Route path="/users" element={<Layout><Users /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

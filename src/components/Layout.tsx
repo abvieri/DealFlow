@@ -1,8 +1,9 @@
 import { ReactNode, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
-import { LogOut, FileText, Settings, LayoutDashboard, Plus } from "lucide-react";
+import { LogOut, FileText, Settings, LayoutDashboard, Plus, Users } from "lucide-react";
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,6 +11,7 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const { user, loading, signOut } = useAuth();
+  const { isAdmin } = useUserRole();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -64,6 +66,18 @@ const Layout = ({ children }: LayoutProps) => {
                     Serviços
                   </Button>
                 </Link>
+                {isAdmin && (
+                  <Link to="/users">
+                    <Button
+                      variant={isActive("/users") ? "secondary" : "ghost"}
+                      size="sm"
+                      className="gap-2"
+                    >
+                      <Users className="h-4 w-4" />
+                      Usuários
+                    </Button>
+                  </Link>
+                )}
               </nav>
             </div>
             <div className="flex items-center space-x-2">
