@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, ShoppingCart, ChevronRight } from "lucide-react";
+import { ShoppingCart, Search } from "lucide-react";
 
 interface ServicePlan {
   id: string;
@@ -36,7 +36,7 @@ const ProposalBuild = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [expandedService, setExpandedService] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     fetchServices();
@@ -148,104 +148,120 @@ const ProposalBuild = () => {
 
   const totals = calculateTotals();
 
+  const filteredServices = services.filter(service =>
+    service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    service.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const allPlans = filteredServices.flatMap(service =>
+    service.service_plans.map(plan => ({
+      ...plan,
+      service_name: service.name,
+      service_id: service.id
+    }))
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Montar Proposta</h1>
-          <p className="text-muted-foreground">Selecione serviços e planos da biblioteca</p>
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold mb-2">Portfólio de Produtos e Serviços V4</h1>
+        
+        {/* Search Bar */}
+        <div className="max-w-md mx-auto mt-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Pesquisar produto..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Services Library */}
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid lg:grid-cols-4 gap-6">
+        {/* Services Grid - 3 columns */}
+        <div className="lg:col-span-3">
           {loading ? (
-            <Card>
-              <CardContent className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
           ) : (
-            services.map((service) => (
-              <Card key={service.id} className="shadow-md hover:shadow-purple transition-shadow">
-                <CardHeader
-                  className="cursor-pointer"
-                  onClick={() =>
-                    setExpandedService(expandedService === service.id ? null : service.id)
-                  }
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{service.name}</CardTitle>
-                      {service.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {service.description}
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {allPlans.map((plan) => {
+                const isInCart = cart.some(item => item.id === plan.id);
+                
+                return (
+                  <Card key={plan.id} className="shadow-md hover:shadow-lg transition-shadow flex flex-col">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between mb-2">
+                        <CardTitle className="text-base leading-tight">
+                          {plan.service_name} - {plan.plan_name}
+                        </CardTitle>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          CRM
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-between space-y-3 pt-0">
+                      {plan.deliverables && (
+                        <p className="text-xs text-muted-foreground line-clamp-3">
+                          {plan.deliverables}
                         </p>
                       )}
-                    </div>
-                    <ChevronRight
-                      className={`h-5 w-5 transition-transform ${
-                        expandedService === service.id ? "rotate-90" : ""
-                      }`}
-                    />
-                  </div>
-                </CardHeader>
-                {expandedService === service.id && (
-                  <CardContent>
-                    <div className="grid gap-3">
-                      {service.service_plans.map((plan) => (
-                        <Card key={plan.id} className="bg-secondary/30">
-                          <CardContent className="pt-6">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <h4 className="font-semibold mb-2">{plan.plan_name}</h4>
-                                <div className="space-y-1 text-sm">
-                                  <p>
-                                    <span className="text-muted-foreground">Mensal:</span>{" "}
-                                    <span className="font-medium">
-                                      R$ {plan.monthly_fee.toFixed(2)}
-                                    </span>
-                                  </p>
-                                  <p>
-                                    <span className="text-muted-foreground">Setup:</span>{" "}
-                                    <span className="font-medium">
-                                      R$ {plan.setup_fee.toFixed(2)}
-                                    </span>
-                                  </p>
-                                  {plan.deliverables && (
-                                    <p className="text-xs text-muted-foreground pt-2">
-                                      {plan.deliverables}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              <Button
-                                size="sm"
-                                onClick={() => addToCart(plan, service.name)}
-                                className="ml-2"
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            ))
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Valor:</span>
+                          <span className="text-lg font-bold">
+                            R$ {plan.monthly_fee.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Margem:</span>
+                          <span className="text-sm font-semibold text-primary">
+                            {((plan.setup_fee / plan.monthly_fee) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {isInCart ? (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeFromCart(plan.id)}
+                          className="w-full"
+                        >
+                          Remover
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => addToCart(plan, plan.service_name)}
+                          className="w-full"
+                        >
+                          Ver Detalhes
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </div>
 
-        {/* Cart */}
+        {/* Cart - 1 column */}
         <div className="lg:col-span-1">
           <Card className="sticky top-24 shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
                 <ShoppingCart className="h-5 w-5" />
-                Carrinho da Proposta
+                Carrinho
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
