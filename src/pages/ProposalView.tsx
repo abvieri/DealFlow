@@ -251,7 +251,7 @@ const ProposalView = () => {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {proposal.proposal_items.map((item, index) => (
               <Card key={index} className="shadow-lg hover:shadow-xl transition-shadow overflow-hidden group">
-                <div className="h-32 bg-gradient-accent relative overflow-hidden">
+                <div className="h-32 bg-gradient-to-br from-accent-purple to-accent-purple-light relative overflow-hidden">
                   <div className="absolute inset-0 flex items-center justify-center">
                     <CheckCircle className="h-16 w-16 text-white/80" />
                   </div>

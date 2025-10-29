@@ -59,6 +59,11 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "accent-purple": {
+          DEFAULT: "hsl(var(--accent-purple))",
+          foreground: "hsl(var(--accent-purple-foreground))",
+          light: "hsl(var(--accent-purple-light))",
+        },
       },
       boxShadow: {
         sm: "var(--shadow-sm)",

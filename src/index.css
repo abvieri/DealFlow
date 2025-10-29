@@ -63,12 +63,13 @@ All colors MUST be HSL.
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(289, 84%, 38%), hsl(289, 92%, 37%));
     --gradient-subtle: linear-gradient(180deg, hsl(0, 0%, 100%), hsl(289, 40%, 98%));
-    --gradient-dark: linear-gradient(135deg, hsl(160, 40%, 20%), hsl(160, 60%, 15%));
-    --gradient-accent: linear-gradient(135deg, hsl(289, 84%, 38%), hsl(160, 40%, 30%));
+    --gradient-dark: linear-gradient(135deg, hsl(262, 83%, 20%), hsl(280, 60%, 35%));
+    --gradient-accent: linear-gradient(135deg, hsl(262, 83%, 58%), hsl(280, 70%, 70%));
     
-    /* Accent green */
-    --accent-green: 160 60% 40%;
-    --accent-green-foreground: 0 0% 100%;
+    /* Accent purple */
+    --accent-purple: 262 83% 58%;
+    --accent-purple-foreground: 0 0% 100%;
+    --accent-purple-light: 270 70% 75%;
     
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
