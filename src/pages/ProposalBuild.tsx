@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ShoppingCart, Search } from "lucide-react";
 
@@ -37,6 +38,7 @@ const ProposalBuild = () => {
   const [discount, setDiscount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPlans, setSelectedPlans] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetchServices();
@@ -153,13 +155,10 @@ const ProposalBuild = () => {
     service.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const allPlans = filteredServices.flatMap(service =>
-    service.service_plans.map(plan => ({
-      ...plan,
-      service_name: service.name,
-      service_id: service.id
-    }))
-  );
+  const getSelectedPlan = (service: Service) => {
+    const selectedPlanId = selectedPlans[service.id];
+    return service.service_plans.find(p => p.id === selectedPlanId) || service.service_plans[0];
+  };
 
   return (
     <div className="space-y-6">
@@ -189,15 +188,16 @@ const ProposalBuild = () => {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allPlans.map((plan) => {
-                const isInCart = cart.some(item => item.id === plan.id);
+              {filteredServices.map((service) => {
+                const selectedPlan = getSelectedPlan(service);
+                const isInCart = cart.some(item => item.id === selectedPlan.id);
                 
                 return (
-                  <Card key={plan.id} className="shadow-md hover:shadow-lg transition-shadow flex flex-col">
+                  <Card key={service.id} className="shadow-md hover:shadow-lg transition-shadow flex flex-col">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between mb-2">
                         <CardTitle className="text-base leading-tight">
-                          {plan.service_name} - {plan.plan_name}
+                          {service.name}
                         </CardTitle>
                       </div>
                       <div className="flex gap-2">
@@ -207,23 +207,39 @@ const ProposalBuild = () => {
                       </div>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between space-y-3 pt-0">
-                      {plan.deliverables && (
+                      {service.description && (
                         <p className="text-xs text-muted-foreground line-clamp-3">
-                          {plan.deliverables}
+                          {service.description}
                         </p>
                       )}
+                      
+                      {/* Plan Selector */}
+                      <div className="space-y-2">
+                        <Label className="text-xs">Selecionar Plano</Label>
+                        <Select
+                          value={selectedPlan.id}
+                          onValueChange={(value) => 
+                            setSelectedPlans(prev => ({ ...prev, [service.id]: value }))
+                          }
+                        >
+                          <SelectTrigger className="w-full h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {service.service_plans.map((plan) => (
+                              <SelectItem key={plan.id} value={plan.id}>
+                                {plan.plan_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-muted-foreground">Valor:</span>
                           <span className="text-lg font-bold">
-                            R$ {plan.monthly_fee.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">Margem:</span>
-                          <span className="text-sm font-semibold text-primary">
-                            {((plan.setup_fee / plan.monthly_fee) * 100).toFixed(1)}%
+                            R$ {selectedPlan.monthly_fee.toFixed(2)}
                           </span>
                         </div>
                       </div>
@@ -232,7 +248,7 @@ const ProposalBuild = () => {
                         <Button
                           variant="destructive"
                           size="sm"
-                          onClick={() => removeFromCart(plan.id)}
+                          onClick={() => removeFromCart(selectedPlan.id)}
                           className="w-full"
                         >
                           Remover
@@ -241,7 +257,7 @@ const ProposalBuild = () => {
                         <Button
                           variant="default"
                           size="sm"
-                          onClick={() => addToCart(plan, plan.service_name)}
+                          onClick={() => addToCart(selectedPlan, service.name)}
                           className="w-full"
                         >
                           Ver Detalhes
