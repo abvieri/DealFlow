@@ -178,7 +178,7 @@ const ProposalBuild = () => {
   return (
     <div className="space-y-6">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">Portfólio de Produtos e Serviços V4</h1>
+        <h1 className="text-3xl font-bold mb-2">Portfólio de Produtos e Serviços</h1>
         
         {/* Category Filter */}
         <div className="max-w-3xl mx-auto mt-6 mb-4">
