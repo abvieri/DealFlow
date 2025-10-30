@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ShoppingCart, Search } from "lucide-react";
 
@@ -39,6 +40,7 @@ const ProposalBuild = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPlans, setSelectedPlans] = useState<Record<string, string>>({});
+  const [selectedCategory, setSelectedCategory] = useState("todos");
 
   useEffect(() => {
     fetchServices();
@@ -150,10 +152,23 @@ const ProposalBuild = () => {
 
   const totals = calculateTotals();
 
-  const filteredServices = services.filter(service =>
-    service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    service.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const getCategoryFromService = (serviceName: string): string => {
+    const name = serviceName.toLowerCase();
+    if (name.includes('web') || name.includes('site') || name.includes('desenvolvimento')) return 'desenvolvimento';
+    if (name.includes('marketing') || name.includes('growth') || name.includes('seo') || name.includes('ads')) return 'marketing';
+    if (name.includes('comercial') || name.includes('estratégia') || name.includes('consultoria') || name.includes('crm')) return 'comercial';
+    if (name.includes('design') || name.includes('ui') || name.includes('ux') || name.includes('identidade')) return 'design';
+    return 'outros';
+  };
+
+  const filteredServices = services.filter(service => {
+    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      service.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (selectedCategory === 'todos') return matchesSearch;
+    
+    return matchesSearch && getCategoryFromService(service.name) === selectedCategory;
+  });
 
   const getSelectedPlan = (service: Service) => {
     const selectedPlanId = selectedPlans[service.id];
@@ -165,8 +180,32 @@ const ProposalBuild = () => {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Portfólio de Produtos e Serviços V4</h1>
         
+        {/* Category Filter */}
+        <div className="max-w-3xl mx-auto mt-6 mb-4">
+          <p className="text-sm font-medium text-muted-foreground mb-3">Filtrar por Categoria</p>
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+            <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+              <TabsTrigger value="todos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Todos
+              </TabsTrigger>
+              <TabsTrigger value="desenvolvimento" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Desenvolvimento Web
+              </TabsTrigger>
+              <TabsTrigger value="marketing" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Marketing & Growth
+              </TabsTrigger>
+              <TabsTrigger value="comercial" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Comercial & Estratégia
+              </TabsTrigger>
+              <TabsTrigger value="design" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                Design
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        
         {/* Search Bar */}
-        <div className="max-w-md mx-auto mt-6">
+        <div className="max-w-md mx-auto mt-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
