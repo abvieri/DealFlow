@@ -217,13 +217,16 @@ const Services = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label>Prazo (dias)</Label>
+                          <Label>Prazo de Entrega (dias)</Label>
                           <Input
                             type="number"
                             value={plan.delivery_time_days}
                             onChange={(e) => updatePlan(index, "delivery_time_days", parseInt(e.target.value) || 0)}
                             required
                           />
+                          <p className="text-xs text-muted-foreground">
+                            Aplicável apenas a serviços de pagamento único
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <Label>Fee Mensal (R$)</Label>

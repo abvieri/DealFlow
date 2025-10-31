@@ -102,10 +102,14 @@ const ProposalView = () => {
     return <div>Proposta não encontrada</div>;
   }
 
-  const totalDeliveryTime = proposal.proposal_items.reduce(
-    (max, item) => Math.max(max, item.service_plans.delivery_time_days),
-    0
+  // Calculate delivery time only for one-time payment services (setup_fee > 0 and monthly_fee = 0)
+  const oneTimeServices = proposal.proposal_items.filter(
+    item => item.service_plans.setup_fee > 0 && item.service_plans.monthly_fee === 0
   );
+  
+  const totalDeliveryTime = oneTimeServices.length > 0
+    ? oneTimeServices.reduce((max, item) => Math.max(max, item.service_plans.delivery_time_days), 0)
+    : 0;
 
   const finalTotal = proposal.total_monthly + proposal.total_setup - (proposal.discount_value || 0);
 
@@ -130,7 +134,11 @@ const ProposalView = () => {
                 <Edit className="h-4 w-4 mr-2" />
                 Editar
               </Button>
-              <Button onClick={() => toast.info("Funcionalidade em desenvolvimento")} className="bg-white text-foreground hover:bg-white/90">
+              <Button 
+                onClick={() => toast.info("Funcionalidade em desenvolvimento")} 
+                disabled={proposal.status === 'Rascunho' && !proposal.client}
+                className="bg-white text-foreground hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Download className="h-4 w-4 mr-2" />
                 Baixar PDF
               </Button>
@@ -174,17 +182,19 @@ const ProposalView = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 bg-white/20 rounded-lg">
-                    <Clock className="h-5 w-5" />
+            {oneTimeServices.length > 0 && (
+              <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                    <p className="text-sm text-white/70">Prazo de Entrega</p>
                   </div>
-                  <p className="text-sm text-white/70">Prazo</p>
-                </div>
-                <p className="text-3xl font-bold">{totalDeliveryTime} dias</p>
-              </CardContent>
-            </Card>
+                  <p className="text-3xl font-bold">{totalDeliveryTime} dias</p>
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
               <CardContent className="p-6">
@@ -355,10 +365,12 @@ const ProposalView = () => {
                 <div className="text-center p-8 bg-primary/10 rounded-2xl border-2 border-primary/20">
                   <p className="text-sm text-muted-foreground mb-2">Valor Total</p>
                   <p className="text-5xl font-bold text-primary mb-4">R$ {finalTotal.toFixed(2)}</p>
-                  <Badge variant="secondary" className="text-base px-4 py-2">
-                    <Clock className="h-4 w-4 mr-2" />
-                    Entrega em {totalDeliveryTime} dias
-                  </Badge>
+                  {oneTimeServices.length > 0 && (
+                    <Badge variant="secondary" className="text-base px-4 py-2">
+                      <Clock className="h-4 w-4 mr-2" />
+                      Entrega em {totalDeliveryTime} dias
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
