@@ -169,25 +169,9 @@ O projeto implementa múltiplas camadas de segurança:
 - Proteção contra XSS e CSRF
 - Variáveis de ambiente para credenciais sensíveis
 
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Para contribuir:
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feat/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'feat: adiciona nova feature'`)
-4. Push para a branch (`git push origin feat/nova-feature`)
-5. Abra um Pull Request
-
 ## 📄 Licença
 
 Este projeto está sob a licença MIT.
-
-## 📞 Suporte
-
-- **Documentação do Lovable:** [docs.lovable.dev](https://docs.lovable.dev/)
-- **Comunidade Discord:** [Lovable Discord](https://discord.com/channels/1119885301872070706/1280461670979993613)
-- **URL do Projeto:** [https://lovable.dev/projects/a461a67d-1587-4b96-beed-de44f0be6fbf](https://lovable.dev/projects/a461a67d-1587-4b96-beed-de44f0be6fbf)
 
 ## 🎯 Roadmap
 
@@ -198,7 +182,3 @@ Este projeto está sob a licença MIT.
 - [ ] App mobile (React Native)
 - [ ] Relatórios personalizáveis
 - [ ] Sistema de templates de proposta
-
----
-
-Desenvolvido com ❤️ usando [Lovable](https://lovable.dev)
