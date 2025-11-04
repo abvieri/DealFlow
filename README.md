@@ -140,22 +140,6 @@ Acesse **http://localhost:8080** no navegador.
 - **`npm run preview`**: Visualiza a build de produção localmente
 - **`npm run lint`**: Executa o linter ESLint
 
-## 🚀 Deploy
-
-Este projeto pode ser facilmente publicado através do Lovable:
-
-1. Acesse o projeto no [Lovable](https://lovable.dev)
-2. Clique no botão **"Publish"** (canto superior direito no desktop)
-3. Seu app estará disponível em: `seu-projeto.lovable.app`
-
-### Domínio Customizado
-Para conectar um domínio próprio:
-1. Navegue até **Project > Settings > Domains**
-2. Clique em **"Connect Domain"**
-3. Siga as instruções de configuração DNS
-
-📖 [Mais informações sobre domínio customizado](https://docs.lovable.dev/features/custom-domain)
-
 ## 📜 Padrões de Commit
 
 Seguindo o padrão [Conventional Commits](https://www.conventionalcommits.org/):
