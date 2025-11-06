@@ -13,7 +13,6 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
 
@@ -41,35 +40,6 @@ const Auth = () => {
     setLoading(false);
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-        },
-      });
-
-      if (error) {
-        toast.error("Erro ao criar conta", {
-          description: error.message,
-        });
-      } else if (data.user) {
-        toast.success("Conta criada com sucesso! Você já pode fazer login.");
-        setIsSignUp(false);
-      }
-    } catch (error: any) {
-      toast.error("Erro ao criar conta", {
-        description: error.message,
-      });
-    }
-
-    setLoading(false);
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-subtle p-4">
@@ -79,11 +49,11 @@ const Auth = () => {
             Sistema de Propostas
           </CardTitle>
           <CardDescription className="text-center">
-            {isSignUp ? "Crie sua conta para acessar o sistema" : "Entre com suas credenciais para acessar o sistema"}
+            Entre com suas credenciais para acessar o sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -112,20 +82,11 @@ const Auth = () => {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isSignUp ? "Criando conta..." : "Entrando..."}
+                  Entrando...
                 </>
               ) : (
-                isSignUp ? "Criar Conta" : "Entrar"
+                "Entrar"
               )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => setIsSignUp(!isSignUp)}
-              disabled={loading}
-            >
-              {isSignUp ? "Já tem uma conta? Entre" : "Não tem conta? Cadastre-se"}
             </Button>
           </form>
         </CardContent>
