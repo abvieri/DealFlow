@@ -52,7 +52,7 @@ O Sistema de Gestão de Propostas é uma aplicação full-stack para gerenciamen
                   │ HTTP/REST API
                   │
 ┌─────────────────▼───────────────────────┐
-│      Lovable Cloud (Supabase)           │
+│              Supabase                   │
 │  - PostgreSQL Database                  │
 │  - Authentication (JWT)                 │
 │  - Row Level Security (RLS)             │

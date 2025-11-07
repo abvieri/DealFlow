@@ -253,33 +253,36 @@ const ProposalBuild = () => {
                       <div className="space-y-2">
                         <Label className="text-xs">Selecionar Plano</Label>
                         <Select
-                          value={selectedPlan.id}
-                          onValueChange={(value) => 
-                            setSelectedPlans(prev => ({ ...prev, [service.id]: value }))
-                          }
-                        >
+                            value={selectedPlan?.id ?? ""}
+                            onValueChange={(value) =>
+                              setSelectedPlans((prev) => ({ ...prev, [service.id]: value }))
+                            }
+                          >
                           <SelectTrigger className="w-full h-9">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {service.service_plans.map((plan) => (
-                              <SelectItem key={plan.id} value={plan.id}>
-                                {plan.plan_name}
-                              </SelectItem>
-                            ))}
+                            {(service.service_plans ?? []) 
+                              .filter(plan => plan && plan.id)
+                              .map(plan => (
+                                <SelectItem key={plan.id} value={plan.id}>
+                                  {plan.plan_name}
+                                </SelectItem>
+                              ))
+                            }
                           </SelectContent>
                         </Select>
                       </div>
-                      
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-muted-foreground">Valor:</span>
                           <span className="text-lg font-bold">
-                            R$ {selectedPlan.monthly_fee.toFixed(2)}
+                            {selectedPlan?.monthly_fee
+                              ? `R$ ${selectedPlan.monthly_fee.toFixed(2)}`
+                              : "Selecione um plano"}
                           </span>
                         </div>
                       </div>
-
                       {isInCart ? (
                         <Button
                           variant="destructive"

@@ -22,6 +22,8 @@ interface Service {
   id: string;
   name: string;
   description: string | null;
+  category_id?: number;
+  categories?: { name: string };
   service_plans: ServicePlan[];
 }
 
@@ -30,21 +32,36 @@ const Services = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    plans: [{ plan_name: "", monthly_fee: 0, setup_fee: 0, deliverables: "", delivery_time_days: 0 }],
+    category_id: 0,
+    plans: [
+      { plan_name: "", monthly_fee: 0, setup_fee: 0, deliverables: "", delivery_time_days: 0 },
+    ],
   });
 
   useEffect(() => {
     fetchServices();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    const { data, error } = await supabase.from("categories").select("*");
+    if (error) {
+      toast.error("Erro ao carregar categorias", { description: error.message });
+    } else {
+      setCategories(data || []);
+    }
+  };
 
   const fetchServices = async () => {
     try {
       const { data, error } = await supabase
         .from("services")
-        .select("*, service_plans(*)")
+        .select("*, service_plans(*), categories(name)")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -58,21 +75,42 @@ const Services = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
+      if (!formData.category_id) throw new Error("Selecione uma categoria.");
+
       if (editingService) {
+        // Atualiza serviço existente
         const { error: serviceError } = await supabase
           .from("services")
-          .update({ name: formData.name, description: formData.description })
+          .update({
+            name: formData.name,
+            description: formData.description,
+            category_id: formData.category_id,
+          })
           .eq("id", editingService.id);
 
         if (serviceError) throw serviceError;
 
         await supabase.from("service_plans").delete().eq("service_id", editingService.id);
+
+        const newPlans = formData.plans.map((plan) => ({
+          ...plan,
+          service_id: editingService.id,
+        }));
+
+        const { error: plansError } = await supabase.from("service_plans").insert(newPlans);
+        if (plansError) throw plansError;
+
+        toast.success("Serviço atualizado!");
       } else {
+        // Cria novo serviço
         const { data: serviceData, error: serviceError } = await supabase
           .from("services")
-          .insert({ name: formData.name, description: formData.description })
+          .insert({
+            name: formData.name,
+            description: formData.description,
+            category_id: formData.category_id,
+          })
           .select()
           .single();
 
@@ -85,19 +123,10 @@ const Services = () => {
 
         const { error: plansError } = await supabase.from("service_plans").insert(plans);
         if (plansError) throw plansError;
+
+        toast.success("Serviço criado!");
       }
 
-      if (editingService) {
-        const plans = formData.plans.map((plan) => ({
-          ...plan,
-          service_id: editingService.id,
-        }));
-
-        const { error: plansError } = await supabase.from("service_plans").insert(plans);
-        if (plansError) throw plansError;
-      }
-
-      toast.success(editingService ? "Serviço atualizado!" : "Serviço criado!");
       setDialogOpen(false);
       resetForm();
       fetchServices();
@@ -123,6 +152,7 @@ const Services = () => {
     setFormData({
       name: "",
       description: "",
+      category_id: 0,
       plans: [{ plan_name: "", monthly_fee: 0, setup_fee: 0, deliverables: "", delivery_time_days: 0 }],
     });
     setEditingService(null);
@@ -164,7 +194,9 @@ const Services = () => {
             <DialogHeader>
               <DialogTitle>{editingService ? "Editar Serviço" : "Novo Serviço"}</DialogTitle>
             </DialogHeader>
+
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Nome */}
               <div className="space-y-2">
                 <Label>Nome do Serviço</Label>
                 <Input
@@ -173,6 +205,26 @@ const Services = () => {
                   required
                 />
               </div>
+
+              {/* Categoria */}
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <select
+                  className="w-full border rounded-md p-2 bg-background text-foreground"
+                  value={formData.category_id || ""}
+                  onChange={(e) => setFormData({ ...formData, category_id: Number(e.target.value) })}
+                  required
+                >
+                  <option value="">Selecione uma categoria</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Descrição */}
               <div className="space-y-2">
                 <Label>Descrição</Label>
                 <Textarea
@@ -181,16 +233,16 @@ const Services = () => {
                   rows={3}
                 />
               </div>
-              
+
+              {/* Planos */}
               <div className="border-t pt-4">
                 <div className="flex items-center justify-between mb-4">
                   <Label className="text-base font-semibold">Planos</Label>
                   <Button type="button" onClick={addPlan} size="sm" variant="outline">
-                    <Plus className="h-4 w-4 mr-1" />
-                    Adicionar Plano
+                    <Plus className="h-4 w-4 mr-1" /> Adicionar Plano
                   </Button>
                 </div>
-                
+
                 {formData.plans.map((plan, index) => (
                   <Card key={index} className="mb-4">
                     <CardContent className="pt-6 space-y-3">
@@ -224,9 +276,6 @@ const Services = () => {
                             onChange={(e) => updatePlan(index, "delivery_time_days", parseInt(e.target.value) || 0)}
                             required
                           />
-                          <p className="text-xs text-muted-foreground">
-                            Aplicável apenas a serviços de pagamento único
-                          </p>
                         </div>
                         <div className="space-y-2">
                           <Label>Fee Mensal (R$)</Label>
@@ -289,6 +338,11 @@ const Services = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <CardTitle className="text-xl mb-2">{service.name}</CardTitle>
+                    {service.categories?.name && (
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Categoria: {service.categories.name}
+                      </p>
+                    )}
                     {service.description && (
                       <p className="text-sm text-muted-foreground">{service.description}</p>
                     )}
@@ -302,6 +356,7 @@ const Services = () => {
                         setFormData({
                           name: service.name,
                           description: service.description || "",
+                          category_id: service.category_id || 0,
                           plans: service.service_plans.map((p) => ({
                             plan_name: p.plan_name,
                             monthly_fee: p.monthly_fee,
@@ -315,11 +370,7 @@ const Services = () => {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteService(service.id)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => deleteService(service.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
