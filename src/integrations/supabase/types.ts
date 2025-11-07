@@ -188,8 +188,7 @@ export type Database = {
           },
         ]
       }
-
-      /** ✅ NOVA TABELA: categories */
+      
       categories: {
         Row: {
           id: number
@@ -209,7 +208,6 @@ export type Database = {
         Relationships: []
       }
 
-      /** ✅ ATUALIZADO: services agora tem category_id */
       services: {
         Row: {
           id: string

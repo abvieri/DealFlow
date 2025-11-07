@@ -24,6 +24,7 @@ interface Service {
   id: string;
   name: string;
   description: string | null;
+  category_id: number | null; // number agora
   service_plans: ServicePlan[];
 }
 
@@ -31,19 +32,27 @@ interface CartItem extends ServicePlan {
   service_name: string;
 }
 
+interface Category {
+  id: number;
+  name: string;
+}
+
 const ProposalBuild = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [services, setServices] = useState<Service[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedPlans, setSelectedPlans] = useState<Record<string, string>>({});
-  const [selectedCategory, setSelectedCategory] = useState("todos");
+  const [selectedCategory, setSelectedCategory] = useState<number | "todos">("todos");
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     fetchServices();
+    fetchCategories();
     fetchProposalItems();
   }, [id]);
 
@@ -63,11 +72,21 @@ const ProposalBuild = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase.from("categories").select("*");
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (error: any) {
+      toast.error("Erro ao carregar categorias", { description: error.message });
+    }
+  };
+
   const fetchProposalItems = async () => {
     try {
       const { data, error } = await supabase
         .from("proposal_items")
-        .select("*, service_plans(*, services(name))")
+        .select("*, service_plans(*, services(name, category_id))")
         .eq("proposal_id", id);
 
       if (error) throw error;
@@ -90,7 +109,6 @@ const ProposalBuild = () => {
         proposal_id: id,
         service_plan_id: plan.id,
       });
-
       if (error) throw error;
 
       setCart([...cart, { ...plan, service_name: serviceName }]);
@@ -107,7 +125,6 @@ const ProposalBuild = () => {
         .delete()
         .eq("proposal_id", id)
         .eq("service_plan_id", planId);
-
       if (error) throw error;
 
       setCart(cart.filter((item) => item.id !== planId));
@@ -131,7 +148,6 @@ const ProposalBuild = () => {
 
   const handleFinalize = async () => {
     const totals = calculateTotals();
-    
     try {
       const { error } = await supabase
         .from("proposals")
@@ -141,7 +157,6 @@ const ProposalBuild = () => {
           discount_value: totals.discount,
         })
         .eq("id", id);
-
       if (error) throw error;
 
       navigate(`/proposal/${id}/view`);
@@ -152,35 +167,26 @@ const ProposalBuild = () => {
 
   const totals = calculateTotals();
 
-  const getCategoryFromService = (serviceName: string): string => {
-    const name = serviceName.toLowerCase();
-    if (name.includes('web') || name.includes('site') || name.includes('desenvolvimento')) return 'desenvolvimento';
-    if (name.includes('marketing') || name.includes('growth') || name.includes('seo') || name.includes('ads')) return 'marketing';
-    if (name.includes('comercial') || name.includes('estratégia') || name.includes('consultoria') || name.includes('crm')) return 'comercial';
-    if (name.includes('design') || name.includes('ui') || name.includes('ux') || name.includes('identidade')) return 'design';
-    return 'outros';
-  };
-
-  const filteredServices = services.filter(service => {
-    const matchesSearch = service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  const filteredServices = services.filter((service) => {
+    const matchesSearch =
+      service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       service.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (selectedCategory === 'todos') return matchesSearch;
-    
-    return matchesSearch && getCategoryFromService(service.name) === selectedCategory;
+
+    if (selectedCategory === "todos") return matchesSearch;
+
+    return matchesSearch && service.category_id === selectedCategory;
   });
 
   const getSelectedPlan = (service: Service) => {
     const selectedPlanId = selectedPlans[service.id];
-    return service.service_plans.find(p => p.id === selectedPlanId) || service.service_plans[0];
+    return service.service_plans.find((p) => p.id === selectedPlanId) || service.service_plans[0];
   };
 
   return (
     <div className="space-y-7">
+      {/* Header e Search */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Portfólio de Produtos</h1>
-        
-        {/* Search Bar */}
         <div className="max-w-md mx-auto mt-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -197,26 +203,33 @@ const ProposalBuild = () => {
       {/* Category Filter */}
       <div className="max-w-3xl mx-auto mt-6 mb-8">
         <p className="text-sm font-medium text-muted-foreground mb-3 text-center">Filtrar por Categoria</p>
-        <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+        <Tabs
+          value={selectedCategory.toString()}
+          onValueChange={(value) =>
+            setSelectedCategory(value === "todos" ? "todos" : Number(value))
+          }
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-4 h-auto p-1">
             <TabsTrigger value="todos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               Todos
             </TabsTrigger>
-            <TabsTrigger value="desenvolvimento" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Desenvolvimento
-            </TabsTrigger>
-            <TabsTrigger value="marketing" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Marketing & Growth
-            </TabsTrigger>
-            <TabsTrigger value="comercial" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              Comercial & Estratégia
-            </TabsTrigger>
+
+            {categories.map((cat) => (
+              <TabsTrigger
+                key={cat.id}
+                value={cat.id.toString()}
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+              >
+                {cat.name}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
       </div>
 
+      {/* Services Grid e Carrinho */}
       <div className="grid lg:grid-cols-4 gap-6">
-        {/* Services Grid - 3 columns */}
         <div className="lg:col-span-3">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -226,53 +239,46 @@ const ProposalBuild = () => {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredServices.map((service) => {
                 const selectedPlan = getSelectedPlan(service);
-                const isInCart = cart.some(item => item.id === selectedPlan.id);
-                
+                const isInCart = cart.some((item) => item.id === selectedPlan.id);
                 return (
                   <Card key={service.id} className="shadow-md hover:shadow-lg transition-shadow flex flex-col">
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between mb-2">
-                        <CardTitle className="text-base leading-tight">
-                          {service.name}
-                        </CardTitle>
+                        <CardTitle className="text-base leading-tight">{service.name}</CardTitle>
                       </div>
                       <div className="flex gap-2">
                         <Badge variant="secondary" className="text-xs">
-                          CRM
+                          {categories.find((c) => c.id === service.category_id)?.name || "Outros"}
                         </Badge>
                       </div>
                     </CardHeader>
                     <CardContent className="flex-1 flex flex-col justify-between space-y-3 pt-0">
                       {service.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-3">
-                          {service.description}
-                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-3">{service.description}</p>
                       )}
-                      
+
                       {/* Plan Selector */}
                       <div className="space-y-2">
                         <Label className="text-xs">Selecionar Plano</Label>
                         <Select
-                            value={selectedPlan?.id ?? ""}
-                            onValueChange={(value) =>
-                              setSelectedPlans((prev) => ({ ...prev, [service.id]: value }))
-                            }
-                          >
+                          value={selectedPlan?.id ?? ""}
+                          onValueChange={(value) =>
+                            setSelectedPlans((prev) => ({ ...prev, [service.id]: value }))
+                          }
+                        >
                           <SelectTrigger className="w-full h-9">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {(service.service_plans ?? []) 
-                              .filter(plan => plan && plan.id)
-                              .map(plan => (
-                                <SelectItem key={plan.id} value={plan.id}>
-                                  {plan.plan_name}
-                                </SelectItem>
-                              ))
-                            }
+                            {service.service_plans.map((plan) => (
+                              <SelectItem key={plan.id} value={plan.id}>
+                                {plan.plan_name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
+
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-muted-foreground">Valor:</span>
@@ -283,6 +289,7 @@ const ProposalBuild = () => {
                           </span>
                         </div>
                       </div>
+
                       {isInCart ? (
                         <Button
                           variant="destructive"
@@ -310,7 +317,7 @@ const ProposalBuild = () => {
           )}
         </div>
 
-        {/* Cart - 1 column */}
+        {/* Cart */}
         <div className="lg:col-span-1">
           <Card className="sticky top-24 shadow-lg">
             <CardHeader className="pb-3">
@@ -332,13 +339,7 @@ const ProposalBuild = () => {
                         <p className="font-medium">{item.service_name}</p>
                         <p className="text-xs text-muted-foreground">{item.plan_name}</p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        ×
-                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => removeFromCart(item.id)}>×</Button>
                     </div>
                   ))}
                 </div>
@@ -358,8 +359,8 @@ const ProposalBuild = () => {
                   <Label className="text-xs">Desconto (%)</Label>
                   <Input
                     type="number"
-                    min="0"
-                    max="100"
+                    min={0}
+                    max={100}
                     value={discount}
                     onChange={(e) => setDiscount(Number(e.target.value))}
                     className="h-8"
@@ -379,11 +380,7 @@ const ProposalBuild = () => {
                 </div>
               </div>
 
-              <Button
-                className="w-full"
-                onClick={handleFinalize}
-                disabled={cart.length === 0}
-              >
+              <Button className="w-full" onClick={handleFinalize} disabled={cart.length === 0}>
                 Revisar e Fechar Proposta
               </Button>
             </CardContent>
