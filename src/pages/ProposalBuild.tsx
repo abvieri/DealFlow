@@ -176,46 +176,43 @@ const ProposalBuild = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">Portfólio de Produtos e Serviços</h1>
-        
-        {/* Category Filter */}
-        <div className="max-w-3xl mx-auto mt-6 mb-4">
-          <p className="text-sm font-medium text-muted-foreground mb-3">Filtrar por Categoria</p>
-          <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 h-auto p-1">
-              <TabsTrigger value="todos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Todos
-              </TabsTrigger>
-              <TabsTrigger value="desenvolvimento" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Desenvolvimento Web
-              </TabsTrigger>
-              <TabsTrigger value="marketing" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Marketing & Growth
-              </TabsTrigger>
-              <TabsTrigger value="comercial" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Comercial & Estratégia
-              </TabsTrigger>
-              <TabsTrigger value="design" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                Design
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
+        <h1 className="text-3xl font-bold mb-2">Portfólio de Produtos</h1>
         
         {/* Search Bar */}
-        <div className="max-w-md mx-auto mt-4">
+        <div className="max-w-md mx-auto mt-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Pesquisar produto..."
+              placeholder="Pesquisar produtos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-9"
             />
           </div>
         </div>
+      </div>
+
+      {/* Category Filter */}
+      <div className="max-w-3xl mx-auto mt-6 mb-8">
+        <p className="text-sm font-medium text-muted-foreground mb-3 text-center">Filtrar por Categoria</p>
+        <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+            <TabsTrigger value="todos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Todos
+            </TabsTrigger>
+            <TabsTrigger value="desenvolvimento" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Desenvolvimento
+            </TabsTrigger>
+            <TabsTrigger value="marketing" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Marketing & Growth
+            </TabsTrigger>
+            <TabsTrigger value="comercial" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              Comercial & Estratégia
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       <div className="grid lg:grid-cols-4 gap-6">
@@ -226,7 +223,7 @@ const ProposalBuild = () => {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredServices.map((service) => {
                 const selectedPlan = getSelectedPlan(service);
                 const isInCart = cart.some(item => item.id === selectedPlan.id);
@@ -299,7 +296,7 @@ const ProposalBuild = () => {
                           onClick={() => addToCart(selectedPlan, service.name)}
                           className="w-full"
                         >
-                          Ver Detalhes
+                          Adicionar
                         </Button>
                       )}
                     </CardContent>
@@ -316,13 +313,13 @@ const ProposalBuild = () => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <ShoppingCart className="h-5 w-5" />
-                Carrinho
+                Proposta
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {cart.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum item no carrinho
+                  Nenhum item adicionado
                 </p>
               ) : (
                 <div className="space-y-2 max-h-60 overflow-y-auto">

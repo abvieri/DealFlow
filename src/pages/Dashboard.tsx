@@ -96,7 +96,7 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <h1 className="text-3xl font-bold text-foreground">Propostas</h1>
           <p className="text-muted-foreground">Gerencie suas propostas comerciais</p>
         </div>
         <div className="flex gap-2">
@@ -117,7 +117,7 @@ const Dashboard = () => {
 
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle>Propostas</CardTitle>
+          <CardTitle>Todas as propostas</CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (

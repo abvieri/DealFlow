@@ -43,7 +43,7 @@ const Layout = ({ children }: LayoutProps) => {
             <div className="flex items-center space-x-8">
               <Link to="/" className="flex items-center space-x-2">
                 <FileText className="h-6 w-6 text-primary" />
-                <h1 className="text-xl font-bold text-foreground">Propostas</h1>
+                <h1 className="text-xl font-bold text-foreground">Deal Flow</h1>
               </Link>
               <nav className="hidden md:flex space-x-1">
                 <Link to="/">
@@ -53,7 +53,7 @@ const Layout = ({ children }: LayoutProps) => {
                     className="gap-2"
                   >
                     <LayoutDashboard className="h-4 w-4" />
-                    Dashboard
+                    Propostas
                   </Button>
                 </Link>
                 <Link to="/services">
