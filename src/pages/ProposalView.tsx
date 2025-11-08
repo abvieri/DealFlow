@@ -14,6 +14,7 @@ import { ptBR } from "date-fns/locale";
 import { pdf } from '@react-pdf/renderer';
 import { ProposalDocument } from '@/components/pdf/ProposalDocument';
 import { ClientSelectionDialog } from "@/components/ClientSelectionDialog";
+import { ProposalObservations } from "@/components/ui/Observations";
 
 interface ProposalData {
   id: string;
@@ -197,6 +198,8 @@ const ProposalView = () => {
       setIsDownloading(false);
     }
   };
+
+  const extendedProposal = proposal as any;
 
   if (isLoadingPage) {
     return (
@@ -443,6 +446,9 @@ const ProposalView = () => {
             </Accordion>
           </CardContent>
         </Card>
+
+        {/* Campo de Observações */}
+        <ProposalObservations proposal={extendedProposal} setProposal={setProposal as any} />
 
         {/* Financial Summary */}
         <Card className="shadow-lg bg-gradient-subtle overflow-hidden">

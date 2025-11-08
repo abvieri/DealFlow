@@ -278,16 +278,34 @@ const ProposalBuild = () => {
                           </SelectContent>
                         </Select>
                       </div>
+                      
+                      <div className="space-y-1">
+                        {selectedPlan?.setup_fee > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">Valor de Implementação:</span>
+                            <span className="text-base font-bold">
+                              R$ {selectedPlan.setup_fee.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
 
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">Valor:</span>
-                          <span className="text-lg font-bold">
-                            {selectedPlan?.monthly_fee
-                              ? `R$ ${selectedPlan.monthly_fee.toFixed(2)}`
-                              : "Selecione um plano"}
-                          </span>
-                        </div>
+                        {selectedPlan?.monthly_fee > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">Valor Mensal:</span>
+                            <span className="text-base font-bold">
+                              R$ {selectedPlan.monthly_fee.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+
+                        {selectedPlan?.setup_fee > 0 && selectedPlan?.monthly_fee > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground italic">Valor Total:</span>
+                            <span className="text-sm text-muted-foreground font-semibold italic">
+                              R$ {(selectedPlan.setup_fee + selectedPlan.monthly_fee).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       {isInCart ? (
