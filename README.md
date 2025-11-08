@@ -181,3 +181,5 @@ Este projeto está sob a licença MIT.
 - [ ] App mobile (React Native)
 - [ ] Relatórios personalizáveis
 - [ ] Sistema de templates de proposta
+- [ ] Gerenciamento de Propostas em Kanban
+- [ ] Filtrar Visualizações das Propostas
