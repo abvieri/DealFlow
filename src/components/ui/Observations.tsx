@@ -26,7 +26,7 @@ export const ProposalObservations: React.FC<ProposalObservationsProps> = ({
       setIsSaving(true);
       const { error } = await supabase
         .from("proposals")
-        .update({ observations: tempObservation })
+        .update({ observations: tempObservation } as any)
         .eq("id", proposal.id);
 
       if (error) throw error;
