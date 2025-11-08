@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { ShoppingCart, Search } from "lucide-react";
+import { ShoppingCart, Search, FileText } from "lucide-react";
 
 interface ServicePlan {
   id: string;
@@ -49,6 +49,7 @@ const ProposalBuild = () => {
   const [selectedPlans, setSelectedPlans] = useState<Record<string, string>>({});
   const [selectedCategory, setSelectedCategory] = useState<number | "todos">("todos");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
 
   useEffect(() => {
     fetchServices();
@@ -148,15 +149,22 @@ const ProposalBuild = () => {
 
   const handleFinalize = async () => {
     const totals = calculateTotals();
+    const discountValue =
+      discountType === "percent"
+        ? ((totals.monthly + totals.setup) * discount) / 100
+        : discount;
+
     try {
       const { error } = await supabase
         .from("proposals")
         .update({
           total_monthly: totals.monthly,
           total_setup: totals.setup,
-          discount_value: totals.discount,
+          discount_value: discountValue,
+          discount_type: discountType,
         })
         .eq("id", id);
+
       if (error) throw error;
 
       navigate(`/proposal/${id}/view`);
@@ -166,6 +174,13 @@ const ProposalBuild = () => {
   };
 
   const totals = calculateTotals();
+  const discountValue =
+    discountType === "percent"
+      ? ((totals.monthly + totals.setup) * discount) / 100
+      : discount;
+
+  totals.discount = discountValue;
+  totals.final = totals.monthly + totals.setup - discountValue;
 
   const filteredServices = services.filter((service) => {
     const matchesSearch =
@@ -340,10 +355,12 @@ const ProposalBuild = () => {
           <Card className="sticky top-24 shadow-lg">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <ShoppingCart className="h-5 w-5" />
+                {/* <ShoppingCart className="h-5 w-5" /> */}
+                <FileText className="h-6 w-6 text-base" />
                 Proposta
               </CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-4">
               {cart.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
@@ -352,12 +369,23 @@ const ProposalBuild = () => {
               ) : (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {cart.map((item) => (
-                    <div key={item.id} className="flex items-start justify-between text-sm border-b pb-2">
+                    <div
+                      key={item.id}
+                      className="flex items-start justify-between text-sm border-b pb-2"
+                    >
                       <div className="flex-1">
                         <p className="font-medium">{item.service_name}</p>
-                        <p className="text-xs text-muted-foreground">{item.plan_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.plan_name}
+                        </p>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => removeFromCart(item.id)}>×</Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        ×
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -372,38 +400,69 @@ const ProposalBuild = () => {
                   <span className="text-muted-foreground">Implementação:</span>
                   <span className="font-medium">R$ {totals.setup.toFixed(2)}</span>
                 </div>
-                
+
+                {/* Tipo e Valor de Desconto */}
                 <div className="space-y-2 pt-2">
-                  <Label className="text-xs">Desconto (%)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={discount}
-                    onChange={(e) => setDiscount(Number(e.target.value))}
-                    className="h-8"
-                  />
+                  <Label className="text-xs">Desconto</Label>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={discountType}
+                      onChange={(e) =>
+                        setDiscountType(e.target.value as "percent" | "fixed")
+                      }
+                      className="h-8 bg-white/10 border border-white/20 text-base rounded-lg p-1 text-xs"
+                    >
+                      <option value="percent">% Percentual</option>
+                      <option value="fixed">R$ Valor Fixo</option>
+                    </select>
+
+                    <Input
+                      type="number"
+                      min={0}
+                      max={discountType === "percent" ? 100 : undefined}
+                      value={discount}
+                      onChange={(e) => setDiscount(Number(e.target.value))}
+                      className="h-8"
+                      placeholder={
+                        discountType === "percent" ? "% desconto" : "R$ desconto"
+                      }
+                    />
+                  </div>
                 </div>
 
+                {/* Exibe o valor de desconto */}
                 {discount > 0 && (
-                  <div className="flex justify-between text-sm text-destructive">
-                    <span>Desconto:</span>
+                  <div className="flex justify-between text-sm text-primary">
+                    <span>
+                      Desconto{" "}
+                      {discountType === "percent"
+                        ? `(${discount.toFixed(0)}%)`
+                        : `(R$ ${discount.toFixed(2)})`}
+                      :
+                    </span>
                     <span>- R$ {totals.discount.toFixed(2)}</span>
                   </div>
                 )}
 
                 <div className="flex justify-between font-bold text-lg pt-2 border-t">
                   <span>Total:</span>
-                  <span className="text-primary">R$ {totals.final.toFixed(2)}</span>
+                  <span className="text-green-700">
+                    R$ {totals.final.toFixed(2)}
+                  </span>
                 </div>
               </div>
 
-              <Button className="w-full" onClick={handleFinalize} disabled={cart.length === 0}>
+              <Button
+                className="w-full"
+                onClick={handleFinalize}
+                disabled={cart.length === 0}
+              >
                 Revisar e Fechar Proposta
               </Button>
             </CardContent>
           </Card>
         </div>
+
       </div>
     </div>
   );
