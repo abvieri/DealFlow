@@ -20,12 +20,12 @@
 
 O Sistema de Gestão de Propostas é uma aplicação full-stack para gerenciamento comercial, focada na criação e gestão de propostas de serviços. O sistema permite:
 
-- Criar propostas personalizadas com múltiplos serviços
+- Criar propostas personalizadas com múltiplos serviços organizados por categorias
 - Simular propostas sem salvar (modo demonstração)
-- Gerenciar catálogo de serviços e planos
-- Controlar clientes e seus dados
-- Gerar PDFs profissionais das propostas
-- Gerenciar usuários e permissões
+- Gerenciar catálogo de serviços com planos e categorias
+- Controlar clientes e seus dados com histórico de propostas
+- Gerar PDFs profissionais das propostas usando @react-pdf/renderer
+- Gerenciar usuários e permissões baseadas em roles
 
 ### Principais Casos de Uso
 
@@ -47,12 +47,13 @@ O Sistema de Gestão de Propostas é uma aplicação full-stack para gerenciamen
 │  - TailwindCSS + shadcn/ui              │
 │  - React Router DOM                     │
 │  - TanStack Query (React Query)         │
+│  - @react-pdf/renderer (PDF)            │
 └─────────────────┬───────────────────────┘
                   │
                   │ HTTP/REST API
                   │
 ┌─────────────────▼───────────────────────┐
-│              Supabase                   │
+│         Lovable Cloud (Supabase)        │
 │  - PostgreSQL Database                  │
 │  - Authentication (JWT)                 │
 │  - Row Level Security (RLS)             │
@@ -75,82 +76,112 @@ O projeto segue uma arquitetura de **componentes funcionais** com:
 
 ### Tabelas Principais
 
-#### 1. **profiles**
-Armazena informações adicionais dos usuários.
-
-```typescript
-interface Profile {
-  id: string;                    // UUID (chave primária)
-  user_id: string;               // UUID (referência ao auth.users)
-  full_name: string | null;      // Nome completo
-  role: 'admin' | 'user';        // Papel do usuário
-  created_at: string;            // Timestamp de criação
-  updated_at: string;            // Timestamp de atualização
-}
-```
-
-#### 2. **clients**
+#### 1. **clients**
 Cadastro de clientes para vincular às propostas.
 
 ```typescript
 interface Client {
   id: string;                    // UUID (chave primária)
-  name: string;                  // Nome do cliente
+  name: string;                  // Nome do cliente (NOT NULL)
   email: string | null;          // Email
   phone: string | null;          // Telefone
   company: string | null;        // Empresa
   created_at: string;            // Timestamp de criação
-  updated_at: string;            // Timestamp de atualização
 }
 ```
 
-#### 3. **service_plans**
-Catálogo de serviços disponíveis.
+#### 2. **categories**
+Categorias para organizar serviços.
+
+```typescript
+interface Category {
+  id: number;                    // Serial (chave primária)
+  name: string;                  // Nome da categoria
+  created_at: string;            // Timestamp de criação
+}
+```
+
+#### 3. **services**
+Serviços disponíveis no catálogo.
+
+```typescript
+interface Service {
+  id: string;                    // UUID (chave primária)
+  name: string;                  // Nome do serviço (NOT NULL)
+  description: string | null;    // Descrição detalhada
+  category_id: number | null;    // Referência a categories
+  created_at: string;            // Timestamp de criação
+}
+```
+
+#### 4. **service_plans**
+Planos específicos de cada serviço.
 
 ```typescript
 interface ServicePlan {
   id: string;                    // UUID (chave primária)
-  name: string;                  // Nome do serviço
-  description: string | null;    // Descrição detalhada
-  setup_fee: number;             // Taxa de instalação/setup (pagamento único)
-  monthly_fee: number;           // Mensalidade (pagamento recorrente)
-  delivery_time_days: number;    // Prazo de entrega em dias
-  is_active: boolean;            // Serviço ativo/inativo
+  service_id: string;            // UUID (referência a services, NOT NULL)
+  plan_name: string;             // Nome do plano (NOT NULL)
+  monthly_fee: number;           // Fee mensal (padrão: 0)
+  setup_fee: number;             // Fee de implementação (padrão: 0)
+  deliverables: string | null;   // Entregáveis do plano
+  delivery_time_days: number;    // Prazo de entrega em dias (padrão: 0)
   created_at: string;            // Timestamp de criação
-  updated_at: string;            // Timestamp de atualização
 }
 ```
 
-#### 4. **proposals**
+#### 5. **proposals**
 Propostas criadas no sistema.
 
 ```typescript
 interface Proposal {
   id: string;                    // UUID (chave primária)
+  user_id: string | null;        // UUID (criador da proposta)
   client_id: string | null;      // UUID (referência a clients)
-  user_id: string;               // UUID (criador da proposta)
-  title: string;                 // Título da proposta
-  status: 'Rascunho' | 'Enviada' | 'Aprovada' | 'Rejeitada';
-  discount_percentage: number;   // Desconto em percentual
-  validity_days: number;         // Validade da proposta em dias
-  payment_terms: string | null;  // Condições de pagamento
-  notes: string | null;          // Observações/notas
+  total_monthly: number;         // Total mensal (padrão: 0)
+  total_setup: number;           // Total de implementação (padrão: 0)
+  discount_value: number;        // Valor do desconto (padrão: 0)
+  version: number;               // Versão da proposta (padrão: 1)
+  status: string;                // Status (padrão: 'Rascunho')
   created_at: string;            // Timestamp de criação
   updated_at: string;            // Timestamp de atualização
 }
 ```
 
-#### 5. **proposal_items**
+Status possíveis: `Rascunho`, `Salva`, `Enviada`, `Aceita`, `Recusada`
+
+#### 6. **proposal_items**
 Itens (serviços) de cada proposta.
 
 ```typescript
 interface ProposalItem {
   id: string;                    // UUID (chave primária)
-  proposal_id: string;           // UUID (referência a proposals)
-  service_plan_id: string;       // UUID (referência a service_plans)
-  quantity: number;              // Quantidade do serviço
-  custom_setup_fee: number | null;    // Taxa de setup customizada
-  custom_monthly_fee: number | null;  // Mensalidade customizada
+  proposal_id: string;           // UUID (referência a proposals, NOT NULL)
+  service_plan_id: string;       // UUID (referência a service_plans, NOT NULL)
+  created_at: string;            // Timestamp de criação
+}
+```
+
+#### 7. **proposal_templates**
+Templates de propostas para reutilização.
+
+```typescript
+interface ProposalTemplate {
+  id: string;                    // UUID (chave primária)
+  template_name: string;         // Nome do template (NOT NULL)
+  template_items: jsonb;         // Itens do template em JSON (padrão: '[]')
+  created_at: string;            // Timestamp de criação
+}
+```
+
+#### 8. **user_roles**
+Sistema de roles separado para segurança.
+
+```typescript
+interface UserRole {
+  id: string;                    // UUID (chave primária)
+  user_id: string;               // UUID (referência ao auth.users, NOT NULL)
+  role: 'admin' | 'moderator' | 'user'; // Role do usuário (app_role enum)
   created_at: string;            // Timestamp de criação
 }
 ```
@@ -158,40 +189,83 @@ interface ProposalItem {
 ### Relacionamentos
 
 ```
-profiles (1) ──────> (N) proposals
+categories (1) ──────> (N) services
+services (1) ──────> (N) service_plans
 clients (1) ──────> (N) proposals
 proposals (1) ──────> (N) proposal_items
 service_plans (1) ──────> (N) proposal_items
+auth.users (1) ──────> (1) user_roles
 ```
 
 ### Políticas RLS (Row Level Security)
 
-Todas as tabelas possuem RLS habilitado com políticas baseadas em `auth.uid()`:
+#### clients
+- **SELECT, INSERT, UPDATE, DELETE:** Usuários autenticados podem gerenciar todos os clientes
 
-- **SELECT:** Usuários autenticados podem ver seus próprios registros
-- **INSERT:** Usuários autenticados podem criar registros
-- **UPDATE:** Usuários podem atualizar apenas seus próprios registros
-- **DELETE:** Usuários podem deletar apenas seus próprios registros
+#### services & service_plans
+- **SELECT:** Todos usuários autenticados podem visualizar
+- **INSERT, UPDATE, DELETE:** Apenas administradores (usando função `has_role()`)
+
+#### proposals & proposal_items
+- **SELECT, INSERT, UPDATE, DELETE:** Usuários podem gerenciar apenas suas próprias propostas (baseado em `user_id`)
+
+#### proposal_templates
+- **SELECT, INSERT, DELETE:** Todos usuários autenticados
+- **UPDATE:** Não permitido
+
+#### user_roles
+- **SELECT:** Usuários podem ver seu próprio role; Administradores podem ver todos
+- **INSERT, DELETE:** Apenas administradores
+- **UPDATE:** Não permitido
+
+### Funções de Banco de Dados
+
+#### has_role
+Função de segurança para verificar roles de usuários.
+
+```sql
+CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles
+    WHERE user_id = _user_id
+      AND role = _role
+  )
+$$;
+```
+
+#### update_proposals_updated_at
+Trigger function para atualizar `updated_at` automaticamente.
+
+```sql
+CREATE OR REPLACE FUNCTION public.update_proposals_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$;
+```
 
 ---
 
 ## Componentes Principais
 
 ### 1. **Layout.tsx**
-Componente de layout principal com navegação.
+Componente de layout principal com navegação via Sidebar.
 
 **Responsabilidades:**
 - Renderizar sidebar com menu de navegação
 - Controlar estado de autenticação
 - Gerenciar logout
 - Exibir informações do usuário
-
-**Props:**
-```typescript
-interface LayoutProps {
-  children: React.ReactNode;
-}
-```
 
 **Estrutura:**
 ```tsx
@@ -209,50 +283,65 @@ interface LayoutProps {
 </SidebarProvider>
 ```
 
-### 2. **ClientDataDialog.tsx**
-Dialog para captura de dados do cliente.
+### 2. **ClientSelectionDialog.tsx**
+Dialog para seleção ou criação de cliente.
 
 **Responsabilidades:**
-- Formulário de cadastro de cliente
-- Validação de dados com Zod
+- Listar clientes existentes
+- Criar novo cliente inline
+- Vincular cliente à proposta
+- Validação de dados
+
+### 3. **ClientDataDialog.tsx**
+Dialog simplificado para captura de dados do cliente.
+
+**Responsabilidades:**
+- Formulário de cadastro rápido de cliente
+- Validação de dados
 - Salvar cliente no banco
 - Vincular cliente à proposta
 
-**Props:**
-```typescript
-interface ClientDataDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  proposalId: string;
-  onClientSaved: () => void;
-}
-```
+### 4. **ProposalObservations.tsx**
+Componente para adicionar observações às propostas.
 
-**Schema de Validação:**
-```typescript
-const clientSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  email: z.string().email("Email inválido").optional(),
-  phone: z.string().optional(),
-  company: z.string().optional(),
-});
-```
+**Responsabilidades:**
+- Campo de texto para observações
+- Salvar observações no banco
+- Exibir observações existentes
 
-### 3. **Componentes UI (shadcn/ui)**
+### 5. **ProposalDocument.tsx**
+Componente para geração de PDF usando @react-pdf/renderer.
 
-Biblioteca de componentes reutilizáveis:
+**Responsabilidades:**
+- Estrutura do documento PDF
+- Formatação profissional
+- Dados do cliente e proposta
+- Tabela de serviços com valores
+- Cálculos e totais
 
-- **Button:** Botões com variantes (default, outline, ghost, destructive)
+### 6. **Componentes UI (shadcn/ui)**
+
+Biblioteca completa de componentes reutilizáveis e acessíveis:
+
+- **Button:** Botões com variantes (default, outline, ghost, destructive, secondary)
 - **Card:** Cards para agrupamento de conteúdo
 - **Dialog:** Modais e diálogos
 - **Form:** Formulários com validação
 - **Input:** Campos de entrada
 - **Select:** Seleção de opções
 - **Table:** Tabelas de dados
-- **Toast:** Notificações temporárias
-- **Badge:** Badges de status
-- **Tabs:** Abas de navegação
+- **Toast/Sonner:** Notificações temporárias
+- **Badge:** Badges de status e categorias
+- **Tabs:** Abas de navegação e filtros
 - **Sidebar:** Menu lateral responsivo
+- **Accordion:** Conteúdo expansível
+- **Alert:** Mensagens de alerta
+- **Avatar:** Avatares de usuário
+- **Calendar:** Seletor de datas
+- **Checkbox:** Caixas de seleção
+- **Progress:** Barras de progresso
+- **Textarea:** Campos de texto multilinha
+- **Tooltip:** Dicas contextuais
 
 Todos os componentes seguem os padrões de acessibilidade (ARIA) e são totalmente customizáveis via Tailwind CSS.
 
@@ -263,7 +352,7 @@ Todos os componentes seguem os padrões de acessibilidade (ARIA) e são totalmen
 ### Estrutura de Rotas
 
 ```typescript
-// App.tsx
+// App.tsx - Principais rotas
 const router = createBrowserRouter([
   {
     path: "/",
@@ -274,21 +363,36 @@ const router = createBrowserRouter([
     element: <Auth />,
   },
   {
-    path: "/proposals",
-    children: [
-      { path: "new", element: <Layout><ProposalNew /></Layout> },
-      { path: "build/:id", element: <Layout><ProposalBuild /></Layout> },
-      { path: "view/:id", element: <Layout><ProposalView /></Layout> },
-      { path: "simulate", element: <Layout><ProposalSimulate /></Layout> },
-    ],
+    path: "/proposal/new",
+    element: <Layout><ProposalNew /></Layout>,
+  },
+  {
+    path: "/proposal/:id/edit",
+    element: <Layout><ProposalBuild /></Layout>,
+  },
+  {
+    path: "/proposal/:id/view",
+    element: <Layout><ProposalView /></Layout>,
+  },
+  {
+    path: "/proposal/simulate",
+    element: <Layout><ProposalSimulate /></Layout>,
   },
   {
     path: "/services",
     element: <Layout><Services /></Layout>,
   },
   {
+    path: "/clients",
+    element: <Layout><Clients /></Layout>,
+  },
+  {
     path: "/users",
     element: <Layout><Users /></Layout>,
+  },
+  {
+    path: "/migrate-data",
+    element: <Layout><MigrateData /></Layout>,
   },
   {
     path: "*",
@@ -307,7 +411,8 @@ Página de autenticação (login/registro).
 - Formulário de registro
 - Validação de campos
 - Redirecionamento após login
-- Mensagens de erro
+- Mensagens de erro com toast
+- Auto-confirm de email habilitado
 
 **Fluxo:**
 ```
@@ -320,150 +425,202 @@ Página de autenticação (login/registro).
 ```
 
 #### **Dashboard.tsx**
-Painel principal com visão geral.
+Painel principal com listagem de propostas.
 
 **Features:**
-- Cards com estatísticas (total de propostas, clientes, receita)
-- Lista de propostas recentes
-- Gráficos de performance
-- Ações rápidas
+- Tabela de propostas com dados principais
+- Badges de status coloridos
+- Botões para criar nova proposta
+- Botão para simular proposta
+- Ações rápidas (visualizar, editar, excluir)
+- Formatação de datas em português
+- Loading states
 
-**Queries:**
-```typescript
-const { data: proposals } = useQuery({
-  queryKey: ['proposals'],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from('proposals')
-      .select('*, client:clients(*), items:proposal_items(*)');
-    return data;
-  },
-});
-```
+**Dados exibidos:**
+- Cliente
+- Data de criação
+- Status (Rascunho, Salva, Enviada, Aceita, Recusada)
+- Fee Mensal
+- Implementação
+- Ações (Visualizar, Editar, Excluir)
 
 #### **ProposalNew.tsx**
-Criação de nova proposta.
+Criação de nova proposta (primeira etapa).
 
 **Features:**
-- Formulário de dados básicos (título, cliente, validade)
-- Seleção de serviços do catálogo
-- Aplicação de descontos
-- Pré-visualização de valores
-- Salvar como rascunho ou enviar
+- Seleção ou criação de cliente
+- Criação inicial da proposta com status "Rascunho"
+- Redirecionamento automático para ProposalBuild
 
 **Fluxo:**
 ```
-1. Usuário preenche dados básicos
-2. Seleciona serviços do catálogo
-3. Ajusta quantidades e descontos
-4. Visualiza resumo com totais
-5. Salva proposta (status: Rascunho)
-6. Redireciona para edição (/proposals/build/:id)
+1. Usuário clica em "Criar Nova Proposta"
+2. Sistema cria proposta em branco (status: Rascunho)
+3. Redireciona para /proposal/:id/edit
+4. Usuário adiciona serviços e configura proposta
 ```
 
 #### **ProposalBuild.tsx**
-Edição de proposta existente.
+Edição e construção de proposta (portfólio de produtos).
 
 **Features:**
-- Editar dados da proposta
-- Adicionar/remover serviços
-- Alterar quantidades
-- Customizar valores individuais
-- Salvar alterações
+- Grid de serviços organizados por categorias
+- Sistema de filtros por categoria (tabs)
+- Busca por nome ou descrição
+- Seletor de planos por serviço
+- Carrinho lateral fixo com resumo
+- Adicionar/remover serviços do carrinho
+- Aplicação de descontos (percentual ou valor fixo)
+- Cálculo automático de totais
+- Visualização de Fee Mensal e Implementação separados
+- Botão "Revisar e Fechar Proposta"
 
-**Estado:**
-```typescript
-const [proposal, setProposal] = useState<Proposal | null>(null);
-const [items, setItems] = useState<ProposalItem[]>([]);
-const [client, setClient] = useState<Client | null>(null);
+**Componentes:**
+- Grid responsivo de serviços (3 colunas desktop)
+- Cards de serviço com informações e preços
+- Carrinho sticky lateral
+- Tabs para filtro de categorias
+- Campo de busca
+
+**Fluxo:**
+```
+1. Usuário navega pelos serviços
+2. Filtra por categoria se necessário
+3. Seleciona plano desejado
+4. Adiciona ao carrinho
+5. Aplica desconto (opcional)
+6. Revisa totais
+7. Clica em "Revisar e Fechar Proposta"
+8. Redireciona para ProposalView
 ```
 
 #### **ProposalView.tsx**
-Visualização e impressão de proposta.
+Visualização e finalização de proposta.
 
 **Features:**
-- Layout formatado para impressão
-- Dados do cliente e proposta
-- Tabela de serviços com valores
-- Totais e descontos
-- Prazo de entrega (apenas serviços de pagamento único)
-- Botão "Baixar PDF"
-- Validação: PDF só é habilitado se cliente estiver preenchido
+- Hero section com gradiente e informações principais
+- Seletor de status da proposta
+- Cards com estatísticas (Valor Total, Total de Serviços)
+- Informações completas do cliente
+- Grid de serviços com cards visuais
+- Accordion com detalhes de cada serviço
+- Resumo financeiro com breakdown de valores
+- Componente de observações editável
+- Geração de PDF profissional
+- Validações antes de gerar PDF
+
+**Layout:**
+- Hero section com gradiente primary
+- Cards de informações do cliente
+- Grid de serviços (3 colunas)
+- Accordion com entregáveis
+- Card de resumo financeiro
+- Área de observações
+
+**Validações:**
+- Proposta deve estar salva (não pode ser Rascunho)
+- Cliente deve estar vinculado
+- Mostra dialog para selecionar cliente se necessário
 
 **Geração de PDF:**
+Usa `@react-pdf/renderer` para criar PDFs de alta qualidade:
 ```typescript
-const handleDownloadPDF = async () => {
-  if (!proposal?.client) {
-    setShowClientDialog(true);
-    return;
-  }
-  await generatePDF();
-};
-
-const generatePDF = async () => {
-  setGeneratingPDF(true);
-  const element = document.getElementById('proposal-content');
-  const canvas = await html2canvas(element);
-  const pdf = new jsPDF();
-  const imgData = canvas.toDataURL('image/png');
-  pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
-  pdf.save(`proposta-${proposal.id}.pdf`);
-  setGeneratingPDF(false);
-};
+const blob = await pdf(<ProposalDocument {...props} />).toBlob();
+// Baixa o arquivo
 ```
 
 #### **ProposalSimulate.tsx**
-Simulação de proposta (sem salvar).
+Simulação de proposta sem salvar no banco.
 
 **Features:**
-- Mesma interface de criação de proposta
+- Interface idêntica ao ProposalBuild
+- Dados mantidos apenas em estado local
+- Não requer cliente
 - Não salva no banco de dados
 - Permite exportar para PDF temporário
 - Opção de converter em proposta real
 
 **Diferenças:**
-- Não possui `proposal_id`
+- Não possui `proposal_id` no banco
 - Status sempre "Simulação"
-- Dados mantidos apenas em estado local
-- Não requer cliente para visualizar
+- Dados não persistem ao sair da página
+- Ideal para demonstrações rápidas
 
 #### **Services.tsx**
-Gestão do catálogo de serviços.
+Gestão do catálogo de serviços e planos.
 
 **Features:**
-- Listar todos os serviços
-- Criar novo serviço
-- Editar serviço existente
-- Ativar/desativar serviço
-- Filtrar por status (ativo/inativo)
+- Listar todos os serviços com seus planos
+- Criar novo serviço com múltiplos planos
+- Editar serviço existente e seus planos
+- Excluir serviço (e seus planos automaticamente)
+- Organização por categorias
+- Cards expansíveis por serviço
+- Dialog modal para criação/edição
 
-**Formulário:**
-```typescript
-interface ServiceFormData {
-  name: string;
-  description: string;
-  setup_fee: number;
-  monthly_fee: number;
-  delivery_time_days: number;
-  is_active: boolean;
-}
-```
+**Formulário de Serviço:**
+- Nome do serviço
+- Descrição
+- Categoria
+- Múltiplos planos:
+  - Nome do plano
+  - Fee Mensal (R$)
+  - Implementação (R$)
+  - Prazo de Entrega (dias)
+  - Entregáveis (texto)
 
-**Nota:** Campo "Prazo (dias)" aplica-se apenas a serviços de pagamento único (setup_fee > 0 e monthly_fee = 0).
+**Permissões:**
+- Apenas administradores podem criar/editar/excluir serviços
+- Todos usuários autenticados podem visualizar
+
+#### **Clients.tsx**
+Gestão de clientes do sistema.
+
+**Features:**
+- Listar todos os clientes
+- Busca por nome, email ou empresa
+- Cards com informações principais
+- Criar novo cliente (redireciona para ProposalNew)
+- Editar cliente existente (dialog modal)
+- Excluir cliente
+- Visualizar detalhes do cliente
+- Histórico de propostas do cliente
+- Navegação rápida para propostas
+
+**Dialog de Detalhes:**
+- Informações completas do cliente
+- Data de cadastro
+- Lista de propostas vinculadas
+- Status e valores de cada proposta
+- Botão para visualizar cada proposta
+
+**Componentes:**
+- Grid responsivo de clientes
+- Campo de busca
+- Dialogs para edição, exclusão e detalhes
+- Cards com ações (Detalhes, Editar, Excluir)
 
 #### **Users.tsx**
 Gestão de usuários do sistema.
 
 **Features:**
 - Listar usuários
-- Criar novo usuário
+- Criar novo usuário (usa Edge Function `create-user`)
 - Editar perfil de usuário
-- Alterar role (admin/user)
+- Alterar role (admin/moderator/user)
 - Desativar usuário
 
 **Permissões:**
 - Apenas administradores podem acessar esta página
-- Usa Edge Function `create-user` para criar novos usuários
+- Criação de usuários via Edge Function serverless
+
+#### **MigrateData.tsx**
+Página para migração de dados (administrativa).
+
+**Features:**
+- Ferramentas de migração de dados
+- Importação/exportação
+- Uso de Edge Function `migrate-data`
 
 ---
 
@@ -478,11 +635,13 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Buscar sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
+    // Escutar mudanças de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user ?? null);
@@ -523,49 +682,71 @@ Hook para verificar role do usuário.
 ```typescript
 export const useUserRole = () => {
   const { user } = useAuth();
-  const [role, setRole] = useState<'admin' | 'user' | null>(null);
+  const [role, setRole] = useState<'admin' | 'moderator' | 'user' | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setRole(null);
+      setLoading(false);
+      return;
+    }
 
     const fetchRole = async () => {
       const { data } = await supabase
-        .from('profiles')
+        .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .single();
       
       setRole(data?.role ?? 'user');
+      setLoading(false);
     };
 
     fetchRole();
   }, [user]);
 
-  return { role, isAdmin: role === 'admin' };
+  return { 
+    role, 
+    loading,
+    isAdmin: role === 'admin',
+    isModerator: role === 'moderator' || role === 'admin',
+  };
 };
 ```
 
 ### **use-toast.ts**
-Hook para exibir notificações.
+Hook para exibir notificações usando Sonner.
 
 ```typescript
 import { toast as sonnerToast } from 'sonner';
 
 export const toast = {
-  success: (message: string) => {
-    sonnerToast.success(message);
+  success: (message: string, options?: { description?: string }) => {
+    sonnerToast.success(message, options);
   },
-  error: (message: string) => {
-    sonnerToast.error(message);
+  error: (message: string, options?: { description?: string }) => {
+    sonnerToast.error(message, options);
   },
-  info: (message: string) => {
-    sonnerToast.info(message);
+  info: (message: string, options?: { description?: string }) => {
+    sonnerToast.info(message, options);
+  },
+  warning: (message: string, options?: { description?: string }) => {
+    sonnerToast.warning(message, options);
   },
 };
 
 export const useToast = () => {
   return { toast };
 };
+```
+
+**Uso:**
+```typescript
+import { toast } from "sonner";
+
+toast.success("Operação concluída!");
+toast.error("Erro ao processar", { description: error.message });
 ```
 
 ### **use-mobile.tsx**
@@ -625,26 +806,32 @@ export const useIsMobile = () => {
               └──────────────────────┘
 ```
 
-### Proteção de Rotas
+### Sistema de Roles
 
-```typescript
-// Componente de rota protegida
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
+O sistema utiliza uma tabela separada `user_roles` para gerenciar permissões:
 
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [user, loading, navigate]);
+**Enum de Roles:**
+```sql
+CREATE TYPE app_role AS ENUM ('admin', 'moderator', 'user');
+```
 
-  if (loading) {
-    return <div>Carregando...</div>;
-  }
+**Função de Verificação:**
+```sql
+CREATE FUNCTION has_role(_user_id uuid, _role app_role)
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM user_roles
+    WHERE user_id = _user_id AND role = _role
+  )
+$$;
+```
 
-  return user ? <>{children}</> : null;
-};
+**Uso em RLS:**
+```sql
+-- Apenas administradores podem criar serviços
+CREATE POLICY "Admins can create services"
+ON services FOR INSERT
+WITH CHECK (has_role(auth.uid(), 'admin'));
 ```
 
 ### Auto-Confirm de Email
@@ -652,10 +839,9 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 O sistema está configurado para auto-confirmar emails (não requer verificação):
 
 ```typescript
-// supabase/config.toml
-[auth]
-enable_signup = true
-enable_email_confirmations = false  // Auto-confirm habilitado
+// Configuração no Supabase
+// Settings -> Authentication -> Email Auth
+// Enable Confirm Email: false (auto-confirm habilitado)
 ```
 
 ---
@@ -665,13 +851,24 @@ enable_email_confirmations = false  // Auto-confirm habilitado
 ### Configuração do Cliente Supabase
 
 ```typescript
-// src/integrations/supabase/client.ts
+// src/integrations/supabase/client.ts (gerado automaticamente)
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from './types';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient<Database>(
+  SUPABASE_URL, 
+  SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    }
+  }
+);
 ```
 
 ### Padrão de Queries
@@ -682,13 +879,17 @@ const { data, error } = await supabase
   .from('proposals')
   .select(`
     *,
-    client:clients(*),
-    items:proposal_items(
+    clients(*),
+    proposal_items(
       *,
-      service:service_plans(*)
+      service_plans(
+        *,
+        services(name)
+      )
     )
   `)
-  .eq('user_id', user.id);
+  .eq('user_id', user.id)
+  .order('created_at', { ascending: false });
 ```
 
 #### INSERT (Criar registro)
@@ -697,8 +898,9 @@ const { data, error } = await supabase
   .from('proposals')
   .insert({
     user_id: user.id,
-    title: 'Nova Proposta',
     status: 'Rascunho',
+    total_monthly: 0,
+    total_setup: 0,
   })
   .select()
   .single();
@@ -708,7 +910,11 @@ const { data, error } = await supabase
 ```typescript
 const { error } = await supabase
   .from('proposals')
-  .update({ status: 'Enviada' })
+  .update({ 
+    status: 'Enviada',
+    total_monthly: 1500,
+    total_setup: 3000,
+  })
   .eq('id', proposalId);
 ```
 
@@ -729,13 +935,14 @@ const { data: proposals, isLoading } = useQuery({
   queryFn: async () => {
     const { data, error } = await supabase
       .from('proposals')
-      .select('*')
-      .eq('user_id', user.id);
+      .select('*, clients(name)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
     
     if (error) throw error;
     return data;
   },
-  enabled: !!user,  // Só executa se tiver usuário
+  enabled: !!user,
 });
 
 // Mutation para criar proposta
@@ -755,8 +962,9 @@ const createProposal = useMutation({
     toast.success('Proposta criada com sucesso!');
   },
   onError: (error) => {
-    toast.error('Erro ao criar proposta');
-    console.error(error);
+    toast.error('Erro ao criar proposta', { 
+      description: error.message 
+    });
   },
 });
 ```
@@ -764,292 +972,281 @@ const createProposal = useMutation({
 ### Edge Functions
 
 #### create-user
-Função serverless para criação de usuários.
+Função serverless para criação de usuários administrativos.
 
-```typescript
-// supabase/functions/create-user/index.ts
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+**Localização:** `supabase/functions/create-user/index.ts`
 
-serve(async (req) => {
-  const { email, password, full_name, role } = await req.json();
-  
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  );
-
-  // Criar usuário no auth
-  const { data: user, error: authError } = await supabase.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-  });
-
-  if (authError) {
-    return new Response(JSON.stringify({ error: authError.message }), {
-      status: 400,
-    });
-  }
-
-  // Criar perfil
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .insert({
-      user_id: user.user.id,
-      full_name,
-      role,
-    });
-
-  if (profileError) {
-    return new Response(JSON.stringify({ error: profileError.message }), {
-      status: 400,
-    });
-  }
-
-  return new Response(JSON.stringify({ user }), {
-    status: 200,
-  });
-});
-```
+**Funcionalidade:**
+- Criar usuário no Supabase Auth
+- Atribuir role ao usuário
+- Confirmar email automaticamente
+- Retornar dados do usuário criado
 
 **Uso:**
 ```typescript
-const response = await fetch(
-  `${supabaseUrl}/functions/v1/create-user`,
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${supabaseAnonKey}`,
-    },
-    body: JSON.stringify({
-      email: 'novo@usuario.com',
-      password: 'senha123',
-      full_name: 'Novo Usuário',
-      role: 'user',
-    }),
-  }
-);
+const { data, error } = await supabase.functions.invoke('create-user', {
+  body: {
+    email: 'novo@usuario.com',
+    password: 'senha123',
+    role: 'user',
+  },
+});
 ```
+
+#### setup-admin
+Função para configuração inicial de administrador.
+
+**Localização:** `supabase/functions/setup-admin/index.ts`
+
+**Funcionalidade:**
+- Criar primeiro usuário administrador
+- Configurar role como admin
+- Inicializar sistema
+
+#### migrate-data
+Função para migração de dados.
+
+**Localização:** `supabase/functions/migrate-data/index.ts`
+
+**Funcionalidade:**
+- Importar dados de fontes externas
+- Migrar estruturas de dados
+- Transformar formatos
 
 ---
 
 ## Geração de PDF
 
-### Bibliotecas Utilizadas
+### Biblioteca Utilizada
 
-- **jsPDF:** Criação de documentos PDF
-- **html2canvas:** Captura de elementos HTML como imagem
+**@react-pdf/renderer** - Biblioteca moderna para criar PDFs a partir de componentes React.
+
+**Vantagens:**
+- Renderização do lado do cliente
+- Componentes React nativos
+- Estilização com CSS-in-JS
+- Alta qualidade de saída
+- Suporte a fontes customizadas
+- Melhor performance
+
+### Componente ProposalDocument
+
+```typescript
+// src/components/pdf/ProposalDocument.tsx
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+
+export const ProposalDocument = ({ proposalData, clientData, items }) => (
+  <Document>
+    <Page size="A4" style={styles.page}>
+      {/* Cabeçalho */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Proposta Comercial</Text>
+        <Text style={styles.client}>{clientData.company || clientData.name}</Text>
+      </View>
+
+      {/* Informações do Cliente */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Dados do Cliente</Text>
+        <Text>Nome: {clientData.name}</Text>
+        <Text>Email: {clientData.email}</Text>
+        <Text>Telefone: {clientData.phone}</Text>
+      </View>
+
+      {/* Serviços */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Serviços Contratados</Text>
+        {items.map((item, index) => (
+          <View key={index} style={styles.serviceItem}>
+            <Text style={styles.serviceName}>{item.service_name}</Text>
+            <Text style={styles.planName}>{item.plan_name}</Text>
+            <Text>Fee Mensal: R$ {item.monthly_fee.toFixed(2)}</Text>
+            <Text>Implementação: R$ {item.setup_fee.toFixed(2)}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Totais */}
+      <View style={styles.totals}>
+        <Text>Total Mensal: R$ {proposalData.total_monthly.toFixed(2)}</Text>
+        <Text>Total Implementação: R$ {proposalData.total_setup.toFixed(2)}</Text>
+        <Text style={styles.finalTotal}>
+          Total: R$ {(proposalData.total_monthly + proposalData.total_setup - proposalData.discount_value).toFixed(2)}
+        </Text>
+      </View>
+    </Page>
+  </Document>
+);
+
+const styles = StyleSheet.create({
+  page: {
+    padding: 30,
+    fontFamily: 'Helvetica',
+  },
+  header: {
+    marginBottom: 20,
+    padding: 20,
+    backgroundColor: '#6366f1',
+    color: 'white',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  // ... more styles
+});
+```
 
 ### Processo de Geração
 
 ```typescript
-const generatePDF = async () => {
-  try {
-    setGeneratingPDF(true);
+// src/pages/ProposalView.tsx
+import { pdf } from '@react-pdf/renderer';
+import { ProposalDocument } from '@/components/pdf/ProposalDocument';
 
-    // 1. Capturar elemento HTML
-    const element = document.getElementById('proposal-content');
-    if (!element) throw new Error('Elemento não encontrado');
-
-    // 2. Converter para canvas
-    const canvas = await html2canvas(element, {
-      scale: 2,  // Maior qualidade
-      useCORS: true,  // Permitir imagens externas
-      logging: false,
-    });
-
-    // 3. Converter canvas para imagem
-    const imgData = canvas.toDataURL('image/png');
-
-    // 4. Criar PDF
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    // 5. Calcular dimensões
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-    const imgX = (pdfWidth - imgWidth * ratio) / 2;
-    const imgY = 0;
-
-    // 6. Adicionar imagem ao PDF
-    pdf.addImage(
-      imgData,
-      'PNG',
-      imgX,
-      imgY,
-      imgWidth * ratio,
-      imgHeight * ratio
-    );
-
-    // 7. Salvar arquivo
-    pdf.save(`proposta-${proposal.id}.pdf`);
-
-    toast.success('PDF gerado com sucesso!');
-  } catch (error) {
-    console.error('Erro ao gerar PDF:', error);
-    toast.error('Erro ao gerar PDF');
-  } finally {
-    setGeneratingPDF(false);
-  }
-};
-```
-
-### Layout do PDF
-
-O layout é otimizado para impressão:
-
-```tsx
-<div id="proposal-content" className="bg-white p-8">
-  {/* Cabeçalho com gradiente */}
-  <div className="bg-gradient-to-r from-primary to-primary/80">
-    <h1>Proposta Comercial</h1>
-  </div>
-
-  {/* Dados do Cliente */}
-  <section>
-    <h2>Dados do Cliente</h2>
-    <div className="grid grid-cols-2 gap-4">
-      <div>
-        <strong>Nome:</strong> {client.name}
-      </div>
-      <div>
-        <strong>Email:</strong> {client.email}
-      </div>
-    </div>
-  </section>
-
-  {/* Serviços */}
-  <section>
-    <h2>Serviços Contratados</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Serviço</th>
-          <th>Qtd</th>
-          <th>Setup</th>
-          <th>Mensalidade</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map(item => (
-          <tr key={item.id}>
-            <td>{item.service.name}</td>
-            <td>{item.quantity}</td>
-            <td>{formatCurrency(item.custom_setup_fee)}</td>
-            <td>{formatCurrency(item.custom_monthly_fee)}</td>
-            <td>{formatCurrency(calculateItemTotal(item))}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </section>
-
-  {/* Totais */}
-  <section>
-    <div>
-      <strong>Subtotal:</strong> {formatCurrency(subtotal)}
-    </div>
-    <div>
-      <strong>Desconto ({discount}%):</strong> -{formatCurrency(discountAmount)}
-    </div>
-    <div>
-      <strong>Total:</strong> {formatCurrency(total)}
-    </div>
-  </section>
-
-  {/* Prazo de Entrega (apenas serviços de pagamento único) */}
-  {oneTimeServices.length > 0 && (
-    <section>
-      <strong>Prazo de Entrega:</strong> {maxDeliveryTime} dias úteis
-    </section>
-  )}
-
-  {/* Rodapé */}
-  <footer className="bg-gradient-to-r from-primary to-primary/80">
-    <p>Validade: {validityDays} dias</p>
-    <p>Contato: contato@empresa.com</p>
-  </footer>
-</div>
-```
-
-### Validação Antes de Gerar PDF
-
-```typescript
 const handleDownloadPDF = async () => {
-  // Validar se cliente está preenchido
+  // 1. Validações
   if (!proposal?.client) {
-    toast.error('Preencha os dados do cliente antes de gerar o PDF');
-    setShowClientDialog(true);  // Abrir dialog de cadastro
+    toast.error("Cliente não encontrado");
     return;
   }
 
-  // Validar se tem serviços
-  if (items.length === 0) {
-    toast.error('Adicione pelo menos um serviço à proposta');
+  if (proposal.status === "Rascunho") {
+    toast.error("Salve a proposta antes de gerar PDF");
     return;
   }
 
-  // Gerar PDF
-  await generatePDF();
+  // 2. Gerar blob do PDF
+  setIsDownloading(true);
+  toast.info("Gerando PDF...");
+
+  try {
+    const blob = await pdf(
+      <ProposalDocument 
+        proposalData={proposal} 
+        clientData={proposal.client} 
+        items={formattedItems} 
+      />
+    ).toBlob();
+
+    // 3. Criar URL e baixar
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Proposta - ${proposal.client.company || proposal.client.name}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast.success("PDF baixado com sucesso!");
+  } catch (err) {
+    console.error(err);
+    toast.error("Erro ao gerar PDF");
+  } finally {
+    setIsDownloading(false);
+  }
 };
 ```
+
+### Estrutura do PDF
+
+O PDF gerado contém:
+
+1. **Cabeçalho:**
+   - Logo da empresa
+   - Título "Proposta Comercial"
+   - Nome/Empresa do cliente
+
+2. **Dados do Cliente:**
+   - Nome completo
+   - Email
+   - Telefone
+   - Empresa
+
+3. **Serviços Contratados:**
+   - Nome do serviço
+   - Nome do plano
+   - Fee Mensal
+   - Implementação
+   - Prazo de entrega
+   - Entregáveis (descrição)
+
+4. **Resumo Financeiro:**
+   - Total Fee Mensal
+   - Total Implementação
+   - Desconto aplicado
+   - **Valor Total Final**
+
+5. **Rodapé:**
+   - Data de validade
+   - Informações de contato
+   - Termos e condições
 
 ---
 
 ## Design System
 
-### Tokens de Cores (index.css)
+### Tokens de Cor (CSS Variables)
 
 ```css
+/* src/index.css */
 :root {
-  /* Cores base */
+  /* Background Colors */
   --background: 0 0% 100%;
-  --foreground: 224 71% 4%;
+  --foreground: 222.2 84% 4.9%;
   
-  /* Cores primárias (roxo) */
-  --primary: 262 83% 58%;
+  /* Primary Brand Colors */
+  --primary: 221.2 83.2% 53.3%;
   --primary-foreground: 210 40% 98%;
   
-  /* Cores secundárias */
-  --secondary: 220 14% 96%;
-  --secondary-foreground: 220 9% 46%;
+  /* Secondary Colors */
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
   
-  /* Cores de acento */
-  --accent: 220 14% 96%;
-  --accent-foreground: 220 9% 46%;
+  /* Muted Colors */
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
   
-  /* Cores destrutivas */
-  --destructive: 0 84% 60%;
+  /* Accent Colors */
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  
+  /* Destructive/Error Colors */
+  --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
   
-  /* Bordas e inputs */
-  --border: 220 13% 91%;
-  --input: 220 13% 91%;
-  --ring: 262 83% 58%;
+  /* Border & Input */
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221.2 83.2% 53.3%;
+  
+  /* Card */
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  
+  /* Popover */
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  
+  /* Chart Colors */
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
   
   /* Radius */
   --radius: 0.5rem;
 }
 
 .dark {
-  --background: 224 71% 4%;
+  --background: 222.2 84% 4.9%;
   --foreground: 210 40% 98%;
-  --primary: 263 70% 50%;
-  --primary-foreground: 210 40% 98%;
-  /* ... outras cores dark mode */
+  /* ... dark mode variants */
 }
 ```
 
-### Classes Utilitárias Customizadas
+### Tokens Customizados
 
 ```css
 /* Gradientes */
@@ -1057,34 +1254,29 @@ const handleDownloadPDF = async () => {
   background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
 }
 
-/* Sombras */
+/* Sombras Elegantes */
 .shadow-elegant {
   box-shadow: 0 10px 30px -10px hsl(var(--primary) / 0.3);
 }
 
 /* Animações */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+.transition-smooth {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 ```
 
-### Variantes de Botão
+### Componentes de Botão
 
 ```typescript
-// button.tsx
+// src/components/ui/button.tsx
 const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors",
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        outline: "border border-input bg-background hover:bg-accent",
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
@@ -1104,19 +1296,29 @@ const buttonVariants = cva(
 );
 ```
 
-### Responsividade
+### Breakpoints Tailwind
 
-Breakpoints do Tailwind:
-- **sm:** 640px
-- **md:** 768px
-- **lg:** 1024px
-- **xl:** 1280px
-- **2xl:** 1536px
+```javascript
+// tailwind.config.ts
+export default {
+  theme: {
+    screens: {
+      'sm': '640px',   // Mobile landscape
+      'md': '768px',   // Tablet
+      'lg': '1024px',  // Desktop
+      'xl': '1280px',  // Large desktop
+      '2xl': '1536px', // Extra large
+    },
+  },
+};
+```
 
-Exemplo de uso:
+### Grid Responsivo
+
 ```tsx
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-  {/* Mobile: 1 coluna, Tablet: 2 colunas, Desktop: 3 colunas */}
+// Exemplo de uso
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {/* Conteúdo */}
 </div>
 ```
 
@@ -1127,333 +1329,395 @@ Exemplo de uso:
 ### 1. Criar Nova Proposta
 
 ```
-[Início] → Dashboard
-    ↓
-[Clica em] "Nova Proposta"
-    ↓
-[Página] ProposalNew
-    ↓
-[Preenche] Título, Cliente (opcional), Validade
-    ↓
-[Seleciona] Serviços do catálogo
-    ↓
-[Ajusta] Quantidades e descontos
-    ↓
-[Visualiza] Resumo com totais
-    ↓
-[Clica em] "Salvar Rascunho"
-    ↓
-[Sistema] Cria proposta com status "Rascunho"
-    ↓
-[Redireciona] → /proposals/build/:id
-    ↓
-[Pode] Continuar editando ou visualizar
+1. Dashboard → Botão "Criar Nova Proposta"
+2. ProposalNew → Sistema cria proposta em branco
+3. Redirecionamento automático → ProposalBuild
+4. Selecionar Categoria (Tabs)
+5. Buscar Serviços (opcional)
+6. Para cada serviço:
+   a. Selecionar Plano
+   b. Clicar em "Adicionar"
+7. Revisar Carrinho lateral
+8. Aplicar Desconto (opcional)
+9. Clicar em "Revisar e Fechar Proposta"
+10. ProposalView → Revisar proposta
+11. Selecionar/Criar Cliente
+12. Alterar Status para "Salva"
+13. Adicionar Observações (opcional)
+14. Gerar PDF
 ```
 
-### 2. Gerar PDF de Proposta
+### 2. Simular Proposta
 
 ```
-[Início] → Visualização da Proposta
-    ↓
-[Verifica] Proposta tem cliente?
-    ↓          ↓
-   SIM        NÃO
-    ↓          ↓
-    ↓     [Abre] Dialog de Cadastro de Cliente
-    ↓          ↓
-    ↓     [Preenche] Dados do cliente
-    ↓          ↓
-    ↓     [Salva] Cliente e vincula à proposta
-    ↓          ↓
-    └──────────┘
-         ↓
-[Clica em] "Baixar PDF"
-    ↓
-[Sistema] Captura HTML com html2canvas
-    ↓
-[Sistema] Converte para PDF com jsPDF
-    ↓
-[Sistema] Faz download do arquivo
-    ↓
-[Fim] PDF salvo no dispositivo
+1. Dashboard → Botão "Simular Proposta"
+2. ProposalSimulate → Interface de construção
+3. Adicionar Serviços (mesmo fluxo de ProposalBuild)
+4. Aplicar Desconto
+5. Visualizar Totais
+6. Opções:
+   a. Gerar PDF temporário
+   b. Converter em Proposta Real (salvar)
+   c. Descartar
 ```
 
-### 3. Simular Proposta
+### 3. Gerenciar Clientes
 
 ```
-[Início] → Dashboard
-    ↓
-[Clica em] "Simular Proposta"
-    ↓
-[Página] ProposalSimulate
-    ↓
-[Seleciona] Serviços (sem salvar no banco)
-    ↓
-[Ajusta] Quantidades e valores
-    ↓
-[Visualiza] Preview em tempo real
-    ↓
-[Pode escolher]
-    ↓          ↓
-   PDF     Salvar como Proposta
-    ↓          ↓
-Download   Cria proposta real
+1. Menu Lateral → Clientes
+2. Visualizar Grid de Clientes
+3. Buscar Cliente (opcional)
+4. Ações disponíveis:
+   a. Detalhes → Ver histórico de propostas
+   b. Editar → Atualizar informações
+   c. Excluir → Remover cliente
+5. Criar Novo Cliente → Redireciona para ProposalNew
 ```
 
 ### 4. Gerenciar Serviços (Admin)
 
 ```
-[Início] → Services
-    ↓
-[Lista] Todos os serviços
-    ↓
-[Pode]
-├─ [Criar] Novo serviço
-│     ↓
-│  [Preenche] Nome, Descrição, Valores, Prazo
-│     ↓
-│  [Salva] Serviço ativo
-│
-├─ [Editar] Serviço existente
-│     ↓
-│  [Altera] Campos necessários
-│     ↓
-│  [Salva] Alterações
-│
-└─ [Ativar/Desativar] Serviço
-      ↓
-   [Toggle] Campo is_active
+1. Menu Lateral → Serviços
+2. Visualizar Lista de Serviços
+3. Clicar em "Novo Serviço"
+4. Preencher Formulário:
+   a. Nome do Serviço
+   b. Categoria
+   c. Descrição
+   d. Adicionar Planos:
+      - Nome do Plano
+      - Fee Mensal
+      - Implementação
+      - Prazo
+      - Entregáveis
+5. Clicar em "Criar Serviço"
+6. Sistema salva Serviço e Planos
+```
+
+### 5. Gerar PDF de Proposta
+
+```
+1. ProposalView → Visualizar proposta
+2. Validações:
+   a. Status deve ser diferente de "Rascunho"
+   b. Cliente deve estar vinculado
+3. Clicar em "Baixar PDF"
+4. Sistema:
+   a. Gera componente ProposalDocument
+   b. Converte para blob PDF
+   c. Baixa arquivo automaticamente
+5. Toast de sucesso
 ```
 
 ---
 
 ## Boas Práticas
 
-### 1. **Estrutura de Componentes**
+### Estrutura de Componentes
 
-✅ **BOM:**
 ```typescript
-// Componente focado e reutilizável
-export const ProposalCard = ({ proposal }: { proposal: Proposal }) => {
+// Componente bem estruturado
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+interface ComponentProps {
+  id: string;
+  onSuccess?: () => void;
+}
+
+export const Component = ({ id, onSuccess }: ComponentProps) => {
+  // 1. Estados
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  // 2. Effects
+  useEffect(() => {
+    fetchData();
+  }, [id]);
+
+  // 3. Handlers
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('table')
+        .select('*')
+        .eq('id', id);
+      
+      if (error) throw error;
+      setData(data);
+    } catch (error: any) {
+      toast.error("Erro ao carregar", { description: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 4. Render
+  if (loading) return <div>Carregando...</div>;
+  
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{proposal.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p>Status: {proposal.status}</p>
-      </CardContent>
-    </Card>
+    <div>
+      {/* UI */}
+    </div>
   );
 };
 ```
 
-❌ **RUIM:**
+### Gerenciamento de Estado
+
+**Estado Local (useState):**
 ```typescript
-// Componente gigante com múltiplas responsabilidades
-export const ProposalPage = () => {
-  // 500 linhas de código misturando UI, lógica e queries
-};
+// Para UI state simples
+const [isOpen, setIsOpen] = useState(false);
+const [searchTerm, setSearchTerm] = useState("");
 ```
 
-### 2. **Gerenciamento de Estado**
-
-✅ **BOM:**
+**TanStack Query (Server State):**
 ```typescript
-// Usar TanStack Query para dados do servidor
-const { data: proposals } = useQuery({
+// Para dados do servidor
+const { data, isLoading, error } = useQuery({
   queryKey: ['proposals'],
   queryFn: fetchProposals,
 });
 
-// Usar useState para estado local da UI
-const [isDialogOpen, setIsDialogOpen] = useState(false);
+const mutation = useMutation({
+  mutationFn: createProposal,
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['proposals'] });
+  },
+});
 ```
 
-❌ **RUIM:**
-```typescript
-// Misturar dados do servidor com estado local
-const [proposals, setProposals] = useState([]);
-useEffect(() => {
-  fetchProposals().then(setProposals);
-}, []);  // Re-fetch manual, sem cache
-```
+### Validação de Dados
 
-### 3. **Validação de Dados**
+Usar **Zod** com **react-hook-form**:
 
-✅ **BOM:**
 ```typescript
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
 const schema = z.object({
-  name: z.string().min(1, "Nome obrigatório"),
+  name: z.string().min(1, "Nome é obrigatório"),
   email: z.string().email("Email inválido"),
+  phone: z.string().optional(),
 });
 
-const { handleSubmit, formState: { errors } } = useForm({
+type FormData = z.infer<typeof schema>;
+
+const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
   resolver: zodResolver(schema),
 });
 ```
 
-❌ **RUIM:**
-```typescript
-const handleSubmit = (data) => {
-  if (!data.name) alert("Nome obrigatório");
-  if (!data.email.includes("@")) alert("Email inválido");
-  // Validação manual e inconsistente
-};
-```
+### Tratamento de Erros
 
-### 4. **Tratamento de Erros**
-
-✅ **BOM:**
 ```typescript
 try {
-  const { data, error } = await supabase.from('proposals').insert(newProposal);
+  const { data, error } = await supabase
+    .from('table')
+    .insert(values);
+  
   if (error) throw error;
-  toast.success('Proposta criada com sucesso!');
-  return data;
-} catch (error) {
-  console.error('Erro ao criar proposta:', error);
-  toast.error('Erro ao criar proposta. Tente novamente.');
-  throw error;
+  
+  toast.success("Operação concluída!");
+  onSuccess?.();
+} catch (error: any) {
+  console.error("Erro:", error);
+  toast.error("Erro ao processar", {
+    description: error.message || "Tente novamente",
+  });
 }
 ```
 
-❌ **RUIM:**
-```typescript
-const { data } = await supabase.from('proposals').insert(newProposal);
-// Sem tratamento de erro
-```
+### Performance
 
-### 5. **Performance**
-
-✅ **BOM:**
+**Memoização:**
 ```typescript
-// Memoizar cálculos pesados
-const totalPrice = useMemo(() => {
-  return items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
+import { useMemo, useCallback } from "react";
+
+// Valores computados
+const total = useMemo(() => {
+  return items.reduce((sum, item) => sum + item.price, 0);
 }, [items]);
 
 // Callbacks estáveis
 const handleClick = useCallback(() => {
-  console.log('clicked');
-}, []);
+  doSomething(id);
+}, [id]);
 ```
 
-❌ **RUIM:**
+**Lazy Loading:**
 ```typescript
-// Recalcular em cada render
-const totalPrice = items.reduce((sum, item) => sum + calculateItemTotal(item), 0);
+import { lazy, Suspense } from "react";
 
-// Nova função em cada render
-const handleClick = () => {
-  console.log('clicked');
-};
+const HeavyComponent = lazy(() => import("./HeavyComponent"));
+
+<Suspense fallback={<div>Carregando...</div>}>
+  <HeavyComponent />
+</Suspense>
 ```
 
-### 6. **Acessibilidade**
+### Acessibilidade
 
-✅ **BOM:**
-```typescript
+```tsx
+// ARIA attributes
 <button
-  aria-label="Fechar modal"
-  onClick={handleClose}
+  aria-label="Fechar dialog"
+  aria-expanded={isOpen}
+  aria-controls="menu"
 >
-  <X className="h-4 w-4" />
+  <Icon />
 </button>
-```
 
-❌ **RUIM:**
-```typescript
-<div onClick={handleClose}>
-  <X />
+// Navegação por teclado
+<div
+  role="button"
+  tabIndex={0}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      handleClick();
+    }
+  }}
+>
+  Clique aqui
 </div>
 ```
 
-### 7. **TypeScript**
+### TypeScript
 
-✅ **BOM:**
 ```typescript
-interface ProposalFormData {
-  title: string;
+// Tipos explícitos
+interface Proposal {
+  id: string;
   client_id: string | null;
-  validity_days: number;
+  total_monthly: number;
+  total_setup: number;
 }
 
-const createProposal = (data: ProposalFormData): Promise<Proposal> => {
-  // Implementação com tipos seguros
-};
+// Generics
+function fetchData<T>(url: string): Promise<T> {
+  return fetch(url).then(res => res.json());
+}
+
+// Type Guards
+function isProposal(data: unknown): data is Proposal {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'id' in data &&
+    'total_monthly' in data
+  );
+}
 ```
 
-❌ **RUIM:**
-```typescript
-const createProposal = (data: any): any => {
-  // Perde todos os benefícios do TypeScript
-};
-```
+### Segurança
 
-### 8. **Segurança**
-
-✅ **BOM:**
-```typescript
-// Sempre validar no backend (RLS)
-CREATE POLICY "Users can only view their own proposals"
+**RLS Policies:**
+```sql
+-- Usuários só veem suas próprias propostas
+CREATE POLICY "Users can view own proposals"
 ON proposals FOR SELECT
 USING (auth.uid() = user_id);
 
-// Validar no frontend também
-if (proposal.user_id !== user.id) {
-  throw new Error('Unauthorized');
-}
+-- Administradores têm acesso total
+CREATE POLICY "Admins can manage services"
+ON services FOR ALL
+USING (has_role(auth.uid(), 'admin'));
 ```
 
-❌ **RUIM:**
+**Validação Frontend + Backend:**
 ```typescript
-// Confiar apenas no frontend
-const { data } = await supabase
-  .from('proposals')
-  .select('*');  // Sem filtro, vulnerável
+// Frontend: validação de UX
+const schema = z.object({
+  email: z.string().email(),
+});
+
+// Backend: RLS garante segurança real
+-- Policy no banco
+CREATE POLICY "..." ON table USING (...);
 ```
 
 ---
 
 ## Troubleshooting
 
-### Problema: Erro ao gerar PDF
+### Problemas Comuns
 
-**Sintoma:** PDF não é gerado ou aparece em branco.
-
-**Solução:**
-1. Verificar se o elemento `proposal-content` existe no DOM
-2. Garantir que todas as imagens têm CORS habilitado
-3. Aumentar o `scale` do html2canvas para melhor qualidade
-4. Verificar console para erros de canvas
-
-### Problema: Cliente não aparece na proposta
-
-**Sintoma:** Dados do cliente retornam `null` na query.
+#### 1. PDF não gera
+**Possíveis causas:**
+- Proposta com status "Rascunho"
+- Cliente não vinculado
+- Erro na biblioteca @react-pdf/renderer
 
 **Solução:**
-1. Verificar se `client_id` foi salvo corretamente na proposta
-2. Conferir se a query está fazendo o join correto: `.select('*, client:clients(*)')`
-3. Validar RLS policies da tabela `clients`
+```typescript
+// Validar antes de gerar
+if (proposal.status === "Rascunho") {
+  toast.error("Salve a proposta antes de gerar PDF");
+  return;
+}
 
-### Problema: Prazo de entrega incorreto
+if (!proposal.client) {
+  toast.error("Vincule um cliente à proposta");
+  setShowClientDialog(true);
+  return;
+}
+```
 
-**Sintoma:** Prazo calculado inclui serviços recorrentes.
+#### 2. Dados não aparecem
+**Possíveis causas:**
+- RLS policies incorretas
+- Usuário não autenticado
+- Relação de dados incorreta
 
 **Solução:**
-1. Filtrar apenas serviços com `monthly_fee === 0`
-2. Usar `Math.max()` para pegar o maior prazo
-3. Não exibir seção se não houver serviços de pagamento único
+```typescript
+// Verificar autenticação
+const { user } = useAuth();
+if (!user) {
+  navigate('/auth');
+  return;
+}
 
-### Problema: Toast não aparece
+// Verificar RLS policies no banco
+-- SELECT com política
+SELECT * FROM proposals WHERE user_id = auth.uid();
+```
 
-**Sintoma:** Notificações não são exibidas.
+#### 3. Toast não aparece
+**Possíveis causas:**
+- Componente Toaster não renderizado
+- Import incorreto
 
 **Solução:**
-1. Verificar se `<Toaster />` está no `main.tsx`
-2. Importar toast de `@/hooks/use-toast` corretamente
-3. Verificar se não há erros no console bloqueando a UI
+```tsx
+// Adicionar no root layout
+import { Toaster } from "@/components/ui/sonner";
+
+<App>
+  <Toaster />
+  {children}
+</App>
+```
+
+#### 4. Serviços não carregam no ProposalBuild
+**Possíveis causas:**
+- RLS policy bloqueando SELECT
+- Relações não carregadas
+- Categorias ausentes
+
+**Solução:**
+```typescript
+// Query completa com relações
+const { data, error } = await supabase
+  .from("services")
+  .select("*, service_plans(*), categories(name)")
+  .order("created_at", { ascending: false });
+```
 
 ---
 
@@ -1461,30 +1725,32 @@ const { data } = await supabase
 
 ### Features Planejadas
 
-1. **Relatórios e Analytics**
-   - Dashboard com gráficos de vendas
-   - Exportação de relatórios em Excel
-   - Métricas de conversão de propostas
+- [ ] **Exportação Excel:** Export de propostas e relatórios em formato Excel
+- [ ] **Notificações Email:** Sistema de notificações por email para propostas
+- [ ] **Dashboard Analytics:** Gráficos e métricas avançadas de vendas
+- [ ] **Integração Pagamento:** Conectar com gateways de pagamento (Stripe, PagSeguro)
+- [ ] **App Mobile:** Versão React Native para iOS e Android
+- [ ] **Relatórios Customizáveis:** Criador de relatórios personalizados
+- [ ] **Sistema de Templates:** Salvar e reutilizar templates de propostas
+- [ ] **Kanban de Propostas:** Visualização em quadro Kanban por status
+- [ ] **Filtros Avançados:** Filtros por data, status, cliente, valor
+- [ ] **Assinatura Digital:** Assinatura eletrônica de propostas
+- [ ] **Multi-idioma:** Suporte para múltiplos idiomas
+- [ ] **Histórico de Versões:** Versionamento de propostas
+- [ ] **Comentários:** Sistema de comentários em propostas
+- [ ] **Webhooks:** Integração via webhooks para eventos
 
-2. **Notificações**
-   - Email automático ao criar/atualizar proposta
-   - Notificações push no navegador
-   - Lembretes de propostas expiradas
+### Melhorias Técnicas
 
-3. **Integrações**
-   - Sistema de pagamento (Stripe/PagSeguro)
-   - CRM (HubSpot/Salesforce)
-   - Contabilidade (Conta Azul)
-
-4. **Mobile App**
-   - App nativo com React Native
-   - Sincronização offline
-   - Notificações push
-
-5. **Melhorias de UX**
-   - Editor de propostas com drag-and-drop
-   - Templates de proposta customizáveis
-   - Assinatura digital de propostas
+- [ ] **Testes Unitários:** Implementar testes com Vitest
+- [ ] **Testes E2E:** Testes end-to-end com Playwright
+- [ ] **CI/CD:** Pipeline de integração e deploy contínuo
+- [ ] **Monitoramento:** Implementar Sentry para error tracking
+- [ ] **Cache:** Implementar estratégias de cache avançadas
+- [ ] **PWA:** Transformar em Progressive Web App
+- [ ] **Otimização SEO:** Melhorias para SEO
+- [ ] **Acessibilidade:** Auditoria completa de acessibilidade
+- [ ] **Performance:** Análise e otimização de performance
 
 ---
 
@@ -1492,30 +1758,35 @@ const { data } = await supabase
 
 Para contribuir com a documentação:
 
-1. Identifique seções desatualizadas ou incompletas
-2. Adicione exemplos práticos quando possível
-3. Mantenha a consistência de formatação
-4. Documente novos features imediatamente após implementação
+1. Mantenha a estrutura de seções
+2. Use exemplos de código quando possível
+3. Documente novas features assim que implementadas
+4. Atualize diagramas quando arquitetura mudar
+5. Mantenha consistência de formato
 
 ---
 
 ## Changelog
 
-### v1.0.0 (2024-01-15)
-- ✨ Lançamento inicial do sistema
-- ✨ CRUD completo de propostas
-- ✨ Geração de PDF
-- ✨ Sistema de autenticação
-- ✨ Gestão de serviços e usuários
+### v2.0.0 (Atual)
+- Sistema de categorias para serviços
+- Página de gestão de clientes
+- PDF com @react-pdf/renderer
+- Sistema de roles separado (user_roles)
+- Melhorias visuais em ProposalView
+- Filtros por categoria em ProposalBuild
+- Observações em propostas
 
-### v1.1.0 (2024-01-20)
-- ✨ Modo simulação de propostas
-- ✨ Validação de cliente antes de gerar PDF
-- 🐛 Correção no cálculo de prazo de entrega
-- 📝 Documentação completa
+### v1.0.0 (Inicial)
+- Sistema básico de propostas
+- Autenticação com Supabase
+- CRUD de serviços e planos
+- Geração de PDF básica
+- Dashboard com listagem
+- RLS policies implementadas
 
 ---
 
-**Última atualização:** 2024-01-20  
-**Versão:** 1.1.0  
+**Última atualização:** 2025-11-08  
+**Versão do Sistema:** 2.0.0  
 **Mantenedor:** Equipe de Desenvolvimento
