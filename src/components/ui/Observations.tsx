@@ -48,7 +48,7 @@ export const ProposalObservations: React.FC<ProposalObservationsProps> = ({
   return (
     <div className="mt-6 bg-white/5 border border-white/10 rounded-xl p-4">
       <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-semibold text-white">Observações</h3>
+        <h3 className="text-lg font-semibold text-base">Observações</h3>
 
         {!isEditing ? (
           <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
@@ -71,7 +71,7 @@ export const ProposalObservations: React.FC<ProposalObservationsProps> = ({
       </div>
 
       {!isEditing ? (
-        <p className="text-white/80 whitespace-pre-line">
+        <p className="text-base/80 whitespace-pre-line">
           {proposal.observations?.trim()
             ? proposal.observations
             : "Nenhuma observação adicionada ainda."}

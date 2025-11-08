@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
-import { LogOut, FileText, Settings, LayoutDashboard, Plus, Users } from "lucide-react";
+import { LogOut, FileText, Settings, LayoutDashboard, Plus, Users, Briefcase } from "lucide-react";
 
 interface LayoutProps {
   children: ReactNode;
@@ -46,39 +46,53 @@ const Layout = ({ children }: LayoutProps) => {
                 <h1 className="text-xl font-bold text-foreground">Deal Flow</h1>
               </Link>
               <nav className="hidden md:flex space-x-1">
-                <Link to="/">
+              <Link to="/">
+                <Button
+                  variant={isActive("/") ? "secondary" : "ghost"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Propostas
+                </Button>
+              </Link>
+
+              <Link to="/clients">
+                <Button
+                  variant={isActive("/clients") ? "secondary" : "ghost"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Briefcase className="h-4 w-4" />
+                  Clientes
+                </Button>
+              </Link>
+
+              <Link to="/services">
+                <Button
+                  variant={isActive("/services") ? "secondary" : "ghost"}
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Serviços
+                </Button>
+              </Link>
+
+              {isAdmin && (
+                <Link to="/users">
                   <Button
-                    variant={isActive("/") ? "secondary" : "ghost"}
+                    variant={isActive("/users") ? "secondary" : "ghost"}
                     size="sm"
                     className="gap-2"
                   >
-                    <LayoutDashboard className="h-4 w-4" />
-                    Propostas
+                    <Users className="h-4 w-4" />
+                    Usuários
                   </Button>
                 </Link>
-                <Link to="/services">
-                  <Button
-                    variant={isActive("/services") ? "secondary" : "ghost"}
-                    size="sm"
-                    className="gap-2"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Serviços
-                  </Button>
-                </Link>
-                {isAdmin && (
-                  <Link to="/users">
-                    <Button
-                      variant={isActive("/users") ? "secondary" : "ghost"}
-                      size="sm"
-                      className="gap-2"
-                    >
-                      <Users className="h-4 w-4" />
-                      Usuários
-                    </Button>
-                  </Link>
-                )}
-              </nav>
+              )}
+            </nav>
+
             </div>
             <div className="flex items-center space-x-2">
               <Link to="/proposal/new">

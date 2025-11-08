@@ -62,24 +62,31 @@ const ProposalView = () => {
     setIsLoadingPage(true);
     try {
       const { data, error } = await supabase
-        .from("proposals")
-        .select(`
-          *,
-          clients(*),
-          proposal_items(
-            id, 
-            service_plans(
-              *,
-              services(name)
-            )
+      .from("proposals")
+      .select(`
+        *,
+        clients(*),
+        proposal_items(
+          id, 
+          service_plans(
+            *,
+            services(name)
           )
-        `)
-        .eq("id", id)
-        .single();
+        )
+      `)
+      .eq("id", id)
+      .single();
 
-      if (error) throw error;
-      setProposal(data);
-      return data;
+    if (error) throw error;
+    
+    if (data && (data as any).clients) {
+      (data as any).client = (data as any).clients;
+      delete (data as any).clients;
+    }
+
+    setProposal(data);
+    return data;
+
     } catch (error: any) {
       toast.error("Erro ao carregar proposta", { description: error.message });
       return null;

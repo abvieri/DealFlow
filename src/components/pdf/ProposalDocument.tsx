@@ -1,337 +1,450 @@
 // src/components/pdf/ProposalDocument.tsx
-import React from 'react';
-import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import React from "react";
+import {
+  Document,
+  Page,
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Font,
+} from "@react-pdf/renderer";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-// --- DEFINIÇÃO DE CORES (Baseado no seu PDF) ---
-const colors = {
-  textPrimary: '#2d2d2d', // Cinza bem escuro
-  textSecondary: '#7c7c7c', // Cinza médio
-  line: '#e0e0e0',         // Cinza claro para linhas
-  bgHeader: '#f9f9f9',      // Fundo leve para cabeçalho da tabela
+/**
+ * Versão revisada do ProposalDocument que tenta reproduzir o layout do modelo
+ * fornecido: cabeçalho roxo com logo circular, seções numeradas, "pills" para
+ * serviços e tabela de investimento com totais. O componente recebe dados
+ * dinâmicos via props.
+ *
+ * Observação: para o logo circular, forneça uma URL pública em `brandLogo`.
+ */
+
+// (Opcional) Registrar fontes se quiser fontes específicas (comentado)
+// Font.register({ family: "Inter", src: "/fonts/Inter-Regular.ttf" });
+
+// CORES
+const COLORS = {
+  purple: "#3b0f6f", // header
+  purpleLight: "#efe6fb",
+  textDark: "#222222",
+  textMuted: "#6e6e6e",
+  line: "#d9d9d9",
+  accent: "#6f2bd6",
+  white: "#ffffff",
+  tableHeaderBg: "#faf7fe",
 };
 
-// --- DEFINIÇÃO DE ESTILOS ---
+// ESTILOS
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 35,
-    paddingBottom: 65, // Espaço para o rodapé
-    paddingHorizontal: 40,
-    fontFamily: 'Helvetica',
+    fontFamily: "Helvetica",
     fontSize: 10,
-    color: colors.textSecondary,
+    color: COLORS.textDark,
+    paddingTop: 20,
+    paddingBottom: 40,
+    paddingHorizontal: 40,
+    lineHeight: 1.3,
   },
-  // --- CABEÇALHO DA PÁGINA ---
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-    paddingBottom: 10,
-    borderBottom: `1px solid ${colors.line}`,
+
+  // CABEÇALHO ROXO COM BOLINHA DO LOGO
+  headerWrap: {
+    backgroundColor: COLORS.purple,
+    height: 88,
+    width: "100%",
+    borderRadius: 6,
+    padding: 18,
+    marginBottom: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  headerLogo: {
-    // TODO: Adicionar o seu <Image /> aqui. 
-    // Por agora, um texto de placeholder.
-    width: 100,
-    fontSize: 14,
-    fontFamily: 'Helvetica-Bold',
-    color: colors.textPrimary,
-  },
-  headerTitleBlock: {
-    textAlign: 'right',
+  headerLeft: {
+    flexDirection: "column",
   },
   headerTitle: {
-    fontSize: 20,
-    fontFamily: 'Helvetica-Bold',
-    color: colors.textPrimary,
+    color: COLORS.white,
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 4,
   },
-  headerClient: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 2,
+  headerSubtitle: {
+    color: COLORS.white,
+    fontSize: 9,
+    opacity: 0.95,
   },
-  
-  // --- BLOCO DO CLIENTE ---
-  clientBlock: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
+  headerLogoCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.accent,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  clientName: {
-    fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
-    color: colors.textPrimary,
-  },
-  date: {
-    fontSize: 12,
-    color: colors.textSecondary,
+  headerLogoText: {
+    color: COLORS.white,
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
   },
 
-  // --- SECÇÕES ---
+  // Caixa com cliente / data (outline preto/white)
+  clientBox: {
+    borderWidth: 1,
+    borderColor: COLORS.textDark,
+    borderRadius: 4,
+    padding: 8,
+    marginBottom: 18,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  clientLabel: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+    color: COLORS.textDark,
+  },
+  clientValue: {
+    fontSize: 10,
+    color: COLORS.textMuted,
+  },
+
+  // SEÇÕES
   section: {
-    marginBottom: 20,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontFamily: 'Helvetica-Bold',
-    color: colors.textPrimary,
-    marginBottom: 12,
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+    color: COLORS.purple,
+    marginBottom: 8,
   },
   paragraph: {
-    lineHeight: 1.5,
+    fontSize: 10,
+    color: COLORS.textMuted,
+    marginBottom: 6,
   },
 
-  // --- SECÇÃO 2: LAYOUT DE COLUNAS ---
-  twoColumnRow: {
-    flexDirection: 'row',
-    marginBottom: 10,
+  // Serviços (grid de "pills")
+  servicesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
-  twoColumnLeft: {
-    width: '35%',
-    paddingRight: 10,
-    fontFamily: 'Helvetica-Bold',
-    color: colors.textPrimary,
+  servicePill: {
+    borderRadius: 12,
+    backgroundColor: COLORS.purpleLight,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+    marginRight: 8,
+    minWidth: 120,
   },
-  twoColumnRight: {
-    width: '65%',
-    lineHeight: 1.4,
+  servicePillText: {
+    color: COLORS.purple,
+    fontSize: 9.5,
+    fontFamily: "Helvetica-Bold",
+  },
+  serviceDesc: {
+    width: "48%",
+    fontSize: 9,
+    color: COLORS.textMuted,
+    marginTop: 6,
+    marginBottom: 6,
   },
 
-  // --- SECÇÃO 3: TABELA DE INVESTIMENTO ---
-  table: {
-    border: `1px solid ${colors.line}`,
-    borderRadius: 3,
-    overflow: 'hidden', // Para o borderRadius funcionar
+  // Tabela de investimento
+  tableWrap: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.line,
   },
   tableHeaderRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.bgHeader,
-    borderBottom: `1px solid ${colors.line}`,
+    flexDirection: "row",
+    backgroundColor: COLORS.tableHeaderBg,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.line,
+    paddingVertical: 6,
   },
   tableHeaderCell: {
-    padding: 8,
-    fontFamily: 'Helvetica-Bold',
-    color: colors.textPrimary,
+    fontFamily: "Helvetica-Bold",
     fontSize: 10,
+    color: COLORS.textDark,
   },
   tableRow: {
-    flexDirection: 'row',
-    borderBottom: `1px solid ${colors.line}`,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.line,
   },
-  tableCell: {
-    padding: 8,
-  },
-  // Larguras da tabela
   colService: {
-    width: '50%',
+    width: "55%",
+    paddingRight: 8,
+    fontSize: 10,
   },
   colMonthly: {
-    width: '25%',
-    textAlign: 'right',
+    width: "22.5%",
+    textAlign: "right",
+    fontSize: 10,
   },
   colSetup: {
-    width: '25%',
-    textAlign: 'right',
+    width: "22.5%",
+    textAlign: "right",
+    fontSize: 10,
   },
 
-  // --- TOTAIS ---
-  totalsContainer: {
-    marginTop: 20,
-    marginLeft: 'auto', // Alinha o bloco à direita
-    width: '40%',
+  // Totais
+  totalsWrap: {
+    marginTop: 8,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  totalsBox: {
+    width: "40%",
+    paddingTop: 6,
   },
   totalsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 3,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 4,
   },
   totalsLabel: {
-    color: colors.textSecondary,
+    color: COLORS.textMuted,
+    fontSize: 10,
   },
   totalsValue: {
-    fontFamily: 'Helvetica-Bold',
-    color: colors.textPrimary,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
   },
-  totalsFinalRow: {
-    marginTop: 5,
-    paddingTop: 5,
-    borderTop: `1px solid ${colors.line}`,
-  },
-  totalsFinalLabel: {
-    fontFamily: 'Helvetica-Bold',
-    color: colors.textPrimary,
-    fontSize: 12,
-  },
-  totalsFinalValue: {
-    fontFamily: 'Helvetica-Bold',
-    color: colors.textPrimary,
-    fontSize: 12,
+  totalFinalRow: {
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.line,
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
 
-  // --- RODAPÉ FIXO ---
+  // footer
   footer: {
-    position: 'absolute',
-    bottom: 30,
+    position: "absolute",
+    bottom: 24,
     left: 40,
     right: 40,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTop: `1px solid ${colors.line}`,
-    paddingTop: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     fontSize: 9,
-    color: colors.textSecondary,
-    fontFamily: 'Helvetica-Oblique',
+    color: COLORS.textMuted,
   },
-  footerLogo: {
-    // TODO: Adicionar o seu <Image /> do logo aqui
-    width: 60,
-    textAlign: 'right',
-    fontFamily: 'Helvetica-Bold',
-  }
 });
 
-// --- TIPAGEM (A sua interface original) ---
-interface ProposalDocumentProps {
-  proposalData: {
-    id: string;
-    created_at: string;
-    total_monthly: number;
-    total_setup: number;
-    discount_value: number;
-  };
-  clientData: {
-    name: string;
-    email?: string;
-    phone?: string;
-    company?: string;
-  };
-  items: Array<{
-    id: string;
-    service_name: string;
-    plan_name: string;
-    description?: string | null;
-    monthly_fee: number;
-    setup_fee: number;
-    delivery_time_days: number;
-  }>;
+/**
+ * Tipagem das props
+ */
+interface Item {
+  id: string;
+  service_name: string;
+  plan_name: string;
+  description?: string | null;
+  monthly_fee: number; // 0 se não aplicável
+  setup_fee: number; // 0 se não aplicável
+  type?: "one_time" | "recurring" | "both";
 }
 
-// --- COMPONENTE DO DOCUMENTO ---
-export const ProposalDocument: React.FC<ProposalDocumentProps> = ({ proposalData, clientData, items }) => {
-  // Os seus cálculos originais
-  const totalMonthly = items.reduce((sum, item) => sum + item.monthly_fee, 0);
-  const totalSetup = items.reduce((sum, item) => sum + item.setup_fee, 0);
-  const discount = proposalData.discount_value || 0;
-  // O seu PDF de exemplo soma mensal + setup no "Total Geral"
-  const finalTotal = totalMonthly + totalSetup - discount;
+interface ProposalDocumentProps {
+  proposalData: {
+    id: string;
+    created_at: string;
+    total_monthly?: number;
+    total_setup?: number;
+    discount_value?: number;
+    observations?: string | null;
+  };
+  clientData: {
+    name: string;
+    company?: string;
+    email?: string;
+    phone?: string;
+  };
+  items: Item[];
+  brandLogo?: string; // url opcional do logo circular
+}
 
-  return (
-    <Document>
-      <Page size="A4" style={styles.page}>
-        
-        {/* --- CABEÇALHO --- */}
-        <View style={styles.header}>
-          <View style={styles.headerLogo}>
-            {/* REMOVA ESTE TEXTO E ADICIONE O SEU LOGO
-              Ex: <Image src="/logo-vieri.png" style={{ width: 100 }} /> 
-              NOTA: O logo precisa estar acessível publicamente ou
-              ser importado e "bundleado" com o seu app.
-            */}
-            <Text>Vieri Group</Text>
+/**
+ * Helper pequeno para formatar moeda BRL
+ */
+const formatBRL = (n: number) =>
+  `R$ ${Number(n || 0).toFixed(2).replace(".", ",")}`;
+
+/**
+ * Componente principal
+ */
+export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
+  proposalData,
+  clientData,
+  items,
+  brandLogo,
+}) => {
+  // calcular somas
+  const totalMonthly = items.reduce((s, it) => s + (it.monthly_fee || 0), 0);
+  const totalSetup = items.reduce((s, it) => s + (it.setup_fee || 0), 0);
+  const discount = proposalData.discount_value || 0;
+  const grandTotal = totalMonthly + totalSetup - discount;
+
+  // Para exibir serviços agrupados visualmente, criaremos um conjunto de "pills"
+  const pillLabels = items.map((i) => i.service_name);
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* HEADER */}
+        <View style={styles.headerWrap}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>Proposta Comercial</Text>
+            <Text style={styles.headerSubtitle}>Prestação de Serviço de Marketing</Text>
           </View>
-          <View style={styles.headerTitleBlock}>
-            <Text style={styles.headerTitle}>PROPOSTA COMERCIAL</Text>
-            <Text style={styles.headerClient}>CLIENTE: {clientData.company || clientData.name}</Text>
+
+          {/* logo circular: se brandLogo fornecido, usar Image; caso contrário, placeholder */}
+          {brandLogo ? (
+            <Image
+              src={brandLogo}
+              style={{ width: 56, height: 56, borderRadius: 28 }}
+            />
+          ) : (
+            <View style={styles.headerLogoCircle}>
+              <Text style={styles.headerLogoText}>VG</Text>
+            </View>
+          )}
+        </View>
+
+        {/* CAIXA CLIENTE / DATA */}
+        <View style={styles.clientBox}>
+          <View>
+            <Text style={styles.clientLabel}>Cliente:</Text>
+            <Text style={styles.clientValue}>
+              {clientData.company ? `${clientData.company} — ${clientData.name}` : clientData.name}
+            </Text>
+          </View>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={styles.clientLabel}>Data de Emissão:</Text>
+            <Text style={styles.clientValue}>
+              {format(new Date(proposalData.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+            </Text>
           </View>
         </View>
 
-        {/* --- INFORMAÇÕES DO CLIENTE --- */}
-        <View style={styles.clientBlock}>
-          <Text style={styles.clientName}>{clientData.company || clientData.name}</Text>
-          <Text style={styles.date}>
-            {format(new Date(proposalData.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+        {/* 1º Introdução */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>1º Introdução</Text>
+          <Text style={styles.paragraph}>
+            A Vieri Group é uma empresa de marketing e tecnologia que ajuda negócios a venderem mais pela
+            internet, construindo toda a estrutura digital necessária para crescer e performar no online.
+            Trabalhamos com foco em resultados mensuráveis, entregáveis claros e governança de projeto.
           </Text>
         </View>
 
-        {/* --- 1º INTRODUÇÃO --- */}
+        {/* 2º Serviços e Benefícios */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>1º INTRODUÇÃO</Text>
-          <Text style={styles.paragraph}>
-            A Vieri Group é uma empresa de marketing e tecnologia focada em soluções personalizadas para cada cliente, visando resultados tangíveis e estratégicos.
-          </Text>
+          <Text style={styles.sectionTitle}>2º Serviços e Benefícios</Text>
+
+          {/* Pills de serviços */}
+          <View style={styles.servicesGrid}>
+            {pillLabels.map((label, idx) => (
+              <View key={idx} style={styles.servicePill}>
+                <Text style={styles.servicePillText}>{label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Descrições (dois por linha quando possível) */}
+          <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 6 }}>
+            {items.map((it) => (
+              <View key={it.id} style={{ width: "50%", paddingRight: 8 }}>
+                <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 10, color: COLORS.textDark }}>
+                  {it.service_name} — {it.plan_name}
+                </Text>
+                <Text style={styles.serviceDesc}>
+                  {it.description ? it.description : "Descrição não informada."}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
 
-        {/* --- 2º SERVIÇOS E BENEFÍCIOS --- */}
+        {/* 3º Investimento */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>2º SERVIÇOS E BENEFÍCIOS</Text>
-          {items.map(item => (
-            <View key={item.id} style={styles.twoColumnRow}>
-              <Text style={styles.twoColumnLeft}>{item.service_name}</Text>
-              <Text style={styles.twoColumnRight}>{item.description || item.plan_name}</Text>
-            </View>
-          ))}
+          <Text style={styles.sectionTitle}>3º Investimento</Text>
+
+          <View style={styles.tableWrap}>
+            {/* Cabeçalho */}
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableHeaderCell, styles.colService]}>Serviço</Text>
+              <Text style={[styles.tableHeaderCell, styles.colMonthly]}>Mensal</Text>
+              <Text style={[styles.tableHeaderCell, styles.colSetup]}>Implementação</Text>
+            </View>
+
+            {/* Linhas */}
+            {items.map((it) => (
+              <View key={it.id} style={styles.tableRow}>
+                <Text style={[styles.colService]}>{it.service_name}</Text>
+
+                <Text style={[styles.colMonthly]}>
+                  {it.monthly_fee && it.monthly_fee > 0 ? formatBRL(it.monthly_fee) : "—"}
+                </Text>
+
+                <Text style={[styles.colSetup]}>
+                  {it.setup_fee && it.setup_fee > 0 ? formatBRL(it.setup_fee) : "—"}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Observações (opcional) */}
+          {proposalData.observations ? (
+            <View style={{ marginTop: 8 }}>
+              <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 10, color: COLORS.textDark }}>
+                Observações
+              </Text>
+              <Text style={{ fontSize: 9, color: COLORS.textMuted, marginTop: 4 }}>
+                {proposalData.observations}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Totais à direita */}
+          <View style={styles.totalsWrap}>
+            <View style={styles.totalsBox}>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>Valor Mensal:</Text>
+                <Text style={styles.totalsValue}>{formatBRL(totalMonthly)}</Text>
+              </View>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>Implementação:</Text>
+                <Text style={styles.totalsValue}>{formatBRL(totalSetup)}</Text>
+              </View>
+              {discount > 0 && (
+                <View style={styles.totalsRow}>
+                  <Text style={[styles.totalsLabel, { color: "red" }]}>Desconto:</Text>
+                  <Text style={[styles.totalsValue, { color: "red" }]}>- {formatBRL(discount)}</Text>
+                </View>
+              )}
+              <View style={styles.totalFinalRow}>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>Valor Final de Contratação</Text>
+                <Text style={{ fontFamily: "Helvetica-Bold" }}>{formatBRL(grandTotal)}</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
-        {/* --- 3º INVESTIMENTO --- */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3º INVESTIMENTO</Text>
-          
-          {/* Tabela de Preços */}
-          <View style={styles.table}>
-            {/* Cabeçalho */}
-            <View style={styles.tableHeaderRow}>
-              <Text style={[styles.tableHeaderCell, styles.colService]}>SERVIÇO</Text>
-              <Text style={[styles.tableHeaderCell, styles.colMonthly]}>MENSAL</Text>
-              <Text style={[styles.tableHeaderCell, styles.colSetup]}>SETUP</Text>
-            </View>
-
-            {/* Itens */}
-            {items.map(item => (
-              <View key={item.id} style={styles.tableRow}>
-                <Text style={[styles.tableCell, styles.colService]}>{item.service_name} ({item.plan_name})</Text>
-                <Text style={[styles.tableCell, styles.colMonthly]}>R$ {item.monthly_fee.toFixed(2)}</Text>
-                <Text style={[styles.tableCell, styles.colSetup]}>R$ {item.setup_fee.toFixed(2)}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Bloco de Totais */}
-          <View style={styles.totalsContainer}>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Total Mensal:</Text>
-              <Text style={styles.totalsValue}>R$ {totalMonthly.toFixed(2)}</Text>
-            </View>
-            <View style={styles.totalsRow}>
-              <Text style={styles.totalsLabel}>Total Setup:</Text>
-              <Text style={styles.totalsValue}>R$ {totalSetup.toFixed(2)}</Text>
-            </View>
-            {discount > 0 && (
-              <View style={styles.totalsRow}>
-                <Text style={[styles.totalsLabel, { color: 'red' }]}>Desconto:</Text>
-                <Text style={[styles.totalsValue, { color: 'red' }]}>- R$ {discount.toFixed(2)}</Text>
-              </View>
-            )}
-            <View style={[styles.totalsRow, styles.totalsFinalRow]}>
-              <Text style={styles.totalsFinalLabel}>Total Geral:</Text>
-              <Text style={styles.totalsFinalValue}>R$ {finalTotal.toFixed(2)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* --- RODAPÉ FIXO --- */}
+        {/* RODAPÉ */}
         <View style={styles.footer} fixed>
-          <Text 
-            render={({ pageNumber, totalPages }) => (
-              `PÁGINA ${pageNumber} de ${totalPages}`
-            )}
-          />
-          <Text>contato@vierigroup.com | (48) 99999-9999</Text>
-          <Text style={styles.footerLogo}>Vieri</Text>
+          <Text>Vieri Group • contato@vierigroup.com • (48) 99999-9999</Text>
+          <Text render={({ pageNumber, totalPages }) => `Página ${pageNumber} / ${totalPages}`} />
         </View>
-      </Page>
-    </Document>
-  );
+      </Page>
+    </Document>
+  );
 };
+
+export default ProposalDocument;
