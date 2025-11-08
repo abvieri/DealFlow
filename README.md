@@ -31,11 +31,10 @@ Sistema completo para gestão de propostas comerciais, construído com **React**
 - **[Zod](https://zod.dev/)**: Validação de schemas e tipos.
 
 ### Backend & Infraestrutura
-- **[Lovable Cloud](https://lovable.dev/)**: Plataforma backend completa (Supabase).
-- **Autenticação**: Sistema de login e registro de usuários.
-- **Banco de Dados PostgreSQL**: Armazenamento relacional robusto.
-- **Row Level Security (RLS)**: Políticas de segurança em nível de linha.
-- **Edge Functions**: Funções serverless para lógica customizada.
+- **Autenticação**: Sistema de login e registro de usuários (Supabase).
+- **Banco de Dados PostgreSQL**: Armazenamento relacional robusto (Supabase).
+- **Row Level Security (RLS)**: Políticas de segurança em nível de linha (Supabase).
+- **Edge Functions**: Funções serverless para lógica customizada (Supabase).
 
 ### Bibliotecas Adicionais
 - **[Lucide React](https://lucide.dev/)**: Ícones modernos e consistentes.
