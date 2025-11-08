@@ -1,123 +1,119 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ClientDataDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  proposalId: string;
-  onClientSaved: () => void;
+  proposalId?: string;
+  onClientSaved: (client: any) => void; // 🔹 Agora recebe o cliente criado
 }
 
-export const ClientDataDialog = ({ open, onOpenChange, proposalId, onClientSaved }: ClientDataDialogProps) => {
-  const [saving, setSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    company: "",
-  });
+export const ClientDataDialog: React.FC<ClientDataDialogProps> = ({
+  open,
+  onOpenChange,
+  proposalId,
+  onClientSaved,
+}) => {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [company, setCompany] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name.trim()) {
-      toast.error("Nome é obrigatório");
+  const handleSaveClient = async () => {
+    if (!name) {
+      toast.error("O nome do cliente é obrigatório!");
       return;
     }
 
-    setSaving(true);
+    setIsSaving(true);
+
     try {
-      // Create client
-      const { data: clientData, error: clientError } = await supabase
+      // 🔹 1. Inserir cliente
+      const { data: clientData, error: insertError } = await supabase
         .from("clients")
-        .insert([formData])
-        .select()
+        .insert({ name, email, phone, company })
+        .select("*")
         .single();
 
-      if (clientError) throw clientError;
+      if (insertError) throw insertError;
 
-      // Update proposal with client_id
-      const { error: proposalError } = await supabase
-        .from("proposals")
-        .update({ client_id: clientData.id })
-        .eq("id", proposalId);
+      // 🔹 2. Se tiver uma proposta, vincular automaticamente
+      if (proposalId) {
+        const { error: updateError } = await supabase
+          .from("proposals")
+          .update({ client_id: clientData.id })
+          .eq("id", proposalId);
 
-      if (proposalError) throw proposalError;
+        if (updateError) throw updateError;
+      }
 
-      toast.success("Cliente cadastrado com sucesso!");
-      onClientSaved();
+      toast.success("Cliente criado com sucesso!");
+      onClientSaved(clientData);
       onOpenChange(false);
     } catch (error: any) {
-      toast.error("Erro ao cadastrar cliente", { description: error.message });
+      console.error(error);
+      toast.error("Erro ao salvar cliente: " + error.message);
     } finally {
-      setSaving(false);
+      setIsSaving(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Dados do Cliente</DialogTitle>
-          <DialogDescription>
-            Preencha os dados do cliente antes de gerar o PDF da proposta.
-          </DialogDescription>
+          <DialogTitle>Novo Cliente</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Nome completo do cliente"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="company">Empresa</Label>
-              <Input
-                id="company"
-                value={formData.company}
-                onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                placeholder="Nome da empresa"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="email@exemplo.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Telefone</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="(00) 00000-0000"
-              />
-            </div>
+
+        <div className="space-y-4 py-2">
+          <div>
+            <Label>Nome</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nome do cliente"
+            />
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Salvando..." : "Salvar e Gerar PDF"}
-            </Button>
-          </DialogFooter>
-        </form>
+          <div>
+            <Label>Email</Label>
+            <Input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email do cliente"
+            />
+          </div>
+          <div>
+            <Label>Telefone</Label>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Telefone do cliente"
+            />
+          </div>
+          <div>
+            <Label>Empresa</Label>
+            <Input
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              placeholder="Empresa do cliente"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSaveClient} disabled={isSaving}>
+            {isSaving ? "Salvando..." : "Salvar Cliente"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -112,7 +112,7 @@ const ProposalBuild = () => {
       if (error) throw error;
 
       setCart([...cart, { ...plan, service_name: serviceName }]);
-      toast.success("Item adicionado ao carrinho!");
+      toast.success("Item adicionado a proposta!");
     } catch (error: any) {
       toast.error("Erro ao adicionar item", { description: error.message });
     }
