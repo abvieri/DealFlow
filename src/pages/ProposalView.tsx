@@ -294,7 +294,7 @@ const ProposalView = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
               <Card className="bg-white/15 backdrop-blur-md border-white/20 shadow-lg hover:shadow-xl transition-all hover:bg-white/20">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3 mb-3">
@@ -309,7 +309,7 @@ const ProposalView = () => {
                 </CardContent>
               </Card>
 
-              {oneTimeServices.length > 0 && (
+              {/* {oneTimeServices.length > 0 && (
                 <Card className="bg-white/15 backdrop-blur-md border-white/20 shadow-lg hover:shadow-xl transition-all hover:bg-white/20">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-3">
@@ -323,7 +323,7 @@ const ProposalView = () => {
                     </p>
                   </CardContent>
                 </Card>
-              )}
+              )} */}
 
               <Card className="bg-white/15 backdrop-blur-md border-white/20 shadow-lg hover:shadow-xl transition-all hover:bg-white/20">
                 <CardContent className="p-6">
