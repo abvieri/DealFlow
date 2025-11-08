@@ -95,23 +95,19 @@ const ProposalView = () => {
     }
   };
 
-  // chamado pelo Select quando o usuário tenta mudar o status
   const updateStatus = async (newStatus: string) => {
     if (!proposal) return;
 
-    // Nunca permitir voltar para Rascunho
     if (newStatus === "Rascunho") {
       toast.error("Não é possível voltar para Rascunho.");
       return;
     }
 
-    // Se for mudar de Rascunho -> Salva e não tiver cliente, abre modal pra vincular cliente
     if (proposal.status === "Rascunho" && newStatus === "Salva" && !proposal.client) {
       setShowClientDialog(true);
       return;
     }
 
-    // Se já tiver cliente e estiver tentando qualquer transição válida, faz o update direto
     try {
       const { error } = await supabase
         .from("proposals")
@@ -128,7 +124,6 @@ const ProposalView = () => {
     }
   };
 
-  // Função que você pediu: é chamada quando o ClientSelectionDialog retorna o client escolhido/novo
   const handleClientSelected = async (client: any) => {
     if (!proposal) {
       toast.error("Proposta não carregada.");
@@ -136,7 +131,6 @@ const ProposalView = () => {
     }
 
     try {
-      // salva client_id + marcar como "Salva"
       const { error } = await supabase
         .from("proposals")
         .update({ client_id: client.id, status: "Salva" })
@@ -144,7 +138,6 @@ const ProposalView = () => {
 
       if (error) throw error;
 
-      // atualiza o state local para refletir a mudança imediata na UI
       setProposal(prev => prev ? { ...prev, client: { id: client.id, name: client.name, email: client.email, phone: client.phone, company: client.company }, status: "Salva" } : prev);
 
       setShowClientDialog(false);
@@ -231,7 +224,6 @@ const ProposalView = () => {
 
   return (
     <>
-      {/* Passa proposal.id com segurança — ClientSelectionDialog aceita proposalId opcional */}
       <ClientSelectionDialog
         open={showClientDialog}
         onOpenChange={setShowClientDialog}
@@ -239,97 +231,111 @@ const ProposalView = () => {
         proposalId={proposal.id}
       />
 
-      <div id="proposal-content" className="space-y-0 -mx-4 -my-8">
+      <div id="proposal-content" className="container mx-auto px-6 py-8 space-y-8">
         {/* Hero Section */}
-        <div className="relative bg-gradient-dark text-white overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0" style={{
-              backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\\"60\\" height=\\"60\\" viewBox=\\"0 0 60 60\\" xmlns=\\"http://www.w3.org/2000/svg\\"%3E%3Cg fill=\\"none\\" fill-rule=\\"evenodd\\"%3E%3Cg fill=\\"%23ffffff\\" fill-opacity=\\"0.4\\"%3E%3Cpath d=\\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
-            }} />
-          </div>
-
-          <div className="container mx-auto px-4 py-16 relative z-10">
+        <div className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground rounded-2xl overflow-hidden shadow-elegant">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzR2LTRoLTJ2NGgtNHYyaDR2NGgydi00aDR2LTJoLTR6bTAtMzBWMGgtMnY0aC00djJoNHY0aDJWNmg0VjRoLTR6TTYgMzR2LTRINHY0SDB2Mmg0djRoMnYtNGg0di0ySDZ6TTYgNFYwSDR2NEgwdjJoNHY0aDJWNmg0VjRINnoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-10" />
+          
+          <div className="relative z-10 p-8">
+            {/* Header Actions */}
             <div className="flex items-center justify-between mb-8">
-              <Button variant="ghost" onClick={() => navigate("/")} className="text-white hover:bg-white/10">
+              <Button 
+                variant="ghost" 
+                onClick={() => navigate("/")} 
+                className="text-primary-foreground hover:bg-white/10 transition-colors"
+              >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Voltar
               </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => navigate(`/proposal/${id}/edit`)} className="bg-white/10 text-white border-white/20 hover:bg-white/20">
+              <div className="flex gap-3">
+                <Button 
+                  variant="secondary"
+                  onClick={() => navigate(`/proposal/${id}/edit`)}
+                  className="shadow-sm"
+                >
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
                 </Button>
                 <Button
                   onClick={handleDownloadClick}
                   disabled={isDownloading || isLoadingPage}
-                  className="bg-white text-foreground hover:bg-white/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-background text-foreground hover:bg-background/90 shadow-sm"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   {isDownloading ? "Gerando..." : "Baixar PDF"}
                 </Button>
               </div>
             </div>
-            <div className="max-w-4xl mx-auto text-center mb-12">
-              <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tight">Proposta</h1>
-              <p className="text-xl text-white/80 mb-6">
+
+            {/* Title Section */}
+            <div className="text-center mb-10 max-w-3xl mx-auto">
+              <h1 className="text-5xl md:text-6xl font-bold mb-4 tracking-tight">
+                Proposta Comercial
+              </h1>
+              <p className="text-xl text-primary-foreground/90 mb-6">
                 {proposal.client?.company || proposal.client?.name || 'Cliente'}
               </p>
               <div className="inline-block">
-                <Select
-                  value={proposal.status}
-                  onValueChange={(v) => updateStatus(v)}
-                >
-                  <SelectTrigger className="w-48 bg-white/10 border-white/20 text-white">
+                <Select value={proposal.status} onValueChange={(v) => updateStatus(v)}>
+                  <SelectTrigger className="w-48 bg-white/20 border-white/30 text-primary-foreground backdrop-blur-sm hover:bg-white/30 transition-colors">
                     <SelectValue />
                   </SelectTrigger>
-
                   <SelectContent>
-                    {/* Só exibe Rascunho se a proposta ainda for rascunho e não tiver cliente */}
                     {proposal.status === "Rascunho" && !proposal.client && (
                       <SelectItem value="Rascunho">Rascunho</SelectItem>
                     )}
-
                     <SelectItem value="Salva">Salva</SelectItem>
                     <SelectItem value="Enviada">Enviada</SelectItem>
                     <SelectItem value="Aceita">Aceita</SelectItem>
                     <SelectItem value="Recusada">Recusada</SelectItem>
                   </SelectContent>
                 </Select>
-
               </div>
             </div>
 
-            {/* Key Stats Cards */}
-            <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-              <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              <Card className="bg-white/15 backdrop-blur-md border-white/20 shadow-lg hover:shadow-xl transition-all hover:bg-white/20">
                 <CardContent className="p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-white/20 rounded-lg"><DollarSign className="h-5 w-5" /></div>
-                    <p className="text-sm text-white/70">Valor Total</p>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <DollarSign className="h-6 w-6 text-primary-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-primary-foreground/80">Valor Total</p>
                   </div>
-                  <p className="text-3xl font-bold">R$ {finalTotal.toFixed(2)}</p>
+                  <p className="text-3xl font-bold text-primary-foreground">
+                    R$ {finalTotal.toFixed(2)}
+                  </p>
                 </CardContent>
               </Card>
 
               {oneTimeServices.length > 0 && (
-                <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
+                <Card className="bg-white/15 backdrop-blur-md border-white/20 shadow-lg hover:shadow-xl transition-all hover:bg-white/20">
                   <CardContent className="p-6">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 bg-white/20 rounded-lg"><Clock className="h-5 w-5" /></div>
-                      <p className="text-sm text-white/70">Prazo de Entrega</p>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-3 bg-white/20 rounded-xl">
+                        <Clock className="h-6 w-6 text-primary-foreground" />
+                      </div>
+                      <p className="text-sm font-medium text-primary-foreground/80">Prazo de Entrega</p>
                     </div>
-                    <p className="text-3xl font-bold">{totalDeliveryTime} dias</p>
+                    <p className="text-3xl font-bold text-primary-foreground">
+                      {totalDeliveryTime} dias
+                    </p>
                   </CardContent>
                 </Card>
               )}
 
-              <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-white">
+              <Card className="bg-white/15 backdrop-blur-md border-white/20 shadow-lg hover:shadow-xl transition-all hover:bg-white/20">
                 <CardContent className="p-6">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-white/20 rounded-lg"><Package className="h-5 w-5" /></div>
-                    <p className="text-sm text-white/70">Serviços</p>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-3 bg-white/20 rounded-xl">
+                      <Package className="h-6 w-6 text-primary-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-primary-foreground/80">Total de Serviços</p>
                   </div>
-                  <p className="text-3xl font-bold">{proposal.proposal_items.length}</p>
+                  <p className="text-3xl font-bold text-primary-foreground">
+                    {proposal.proposal_items.length}
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -338,42 +344,44 @@ const ProposalView = () => {
 
         {/* Client Info */}
         {proposal.client && (
-          <Card className="shadow-lg mb-8 overflow-hidden">
-            <div className="bg-gradient-subtle p-6 border-b flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold">Informações do Cliente</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Proposta criada em {format(new Date(proposal.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                </p>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
+            <CardHeader className="border-b bg-muted/30">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-2xl font-bold mb-1">Informações do Cliente</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Proposta criada em {format(new Date(proposal.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => setShowClientDialog(true)} size="sm">
+                  <Edit className="h-4 w-4 mr-2" /> Editar Cliente
+                </Button>
               </div>
-              <Button variant="outline" onClick={() => setShowClientDialog(true)}>
-                <Edit className="h-4 w-4 mr-2" /> Editar Cliente
-              </Button>
-            </div>
+            </CardHeader>
             <CardContent className="p-6">
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">Nome do Cliente</p>
+                  <div className="p-4 bg-muted/30 rounded-lg">
+                    <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Nome do Cliente</p>
                     <p className="text-lg font-semibold">{proposal.client.name}</p>
                   </div>
                   {proposal.client.company && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Empresa</p>
+                    <div className="p-4 bg-muted/30 rounded-lg">
+                      <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Empresa</p>
                       <p className="text-lg font-semibold">{proposal.client.company}</p>
                     </div>
                   )}
                 </div>
                 <div className="space-y-4">
                   {proposal.client.email && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Email</p>
-                      <p className="text-lg font-semibold">{proposal.client.email}</p>
+                    <div className="p-4 bg-muted/30 rounded-lg">
+                      <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Email</p>
+                      <p className="text-lg font-semibold break-all">{proposal.client.email}</p>
                     </div>
                   )}
                   {proposal.client.phone && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">Telefone</p>
+                    <div className="p-4 bg-muted/30 rounded-lg">
+                      <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Telefone</p>
                       <p className="text-lg font-semibold">{proposal.client.phone}</p>
                     </div>
                   )}
@@ -384,25 +392,44 @@ const ProposalView = () => {
         )}
 
         {/* Services Grid */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-6">Serviços Incluídos</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div>
+          <div className="mb-6">
+            <h2 className="text-3xl font-bold mb-2">Serviços Incluídos</h2>
+            <p className="text-muted-foreground">Visão geral dos serviços contratados</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {proposal.proposal_items.map((item, index) => (
-              <Card key={index} className="shadow-lg hover:shadow-xl transition-shadow overflow-hidden group">
-                <div className="h-32 bg-gradient-to-br from-accent-purple to-accent-purple-light relative overflow-hidden">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <CheckCircle className="h-16 w-16 text-white/80" />
+              <Card 
+                key={index} 
+                className="shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group border-muted hover:border-primary/50"
+              >
+                <div className="h-28 bg-gradient-to-br from-primary/90 to-primary relative overflow-hidden">
+                  <div className="absolute inset-0 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity">
+                    <CheckCircle className="h-14 w-14 text-primary-foreground" />
                   </div>
                 </div>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">
+                <CardContent className="p-5">
+                  <h3 className="text-lg font-bold mb-1 group-hover:text-primary transition-colors line-clamp-2">
                     {item.service_plans.services.name}
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-4">{item.service_plans.plan_name}</p>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between"><span className="text-muted-foreground">Mensal:</span><span className="font-semibold">R$ {item.service_plans.monthly_fee.toFixed(2)}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Setup:</span><span className="font-semibold">R$ {item.service_plans.setup_fee.toFixed(2)}</span></div>
-                    <div className="flex justify-between"><span className="text-muted-foreground">Prazo:</span><Badge variant="outline">{item.service_plans.delivery_time_days} dias</Badge></div>
+                  <p className="text-sm text-muted-foreground mb-4 font-medium">
+                    {item.service_plans.plan_name}
+                  </p>
+                  <div className="space-y-2.5 text-sm">
+                    <div className="flex justify-between items-center p-2 bg-muted/30 rounded-md">
+                      <span className="text-muted-foreground font-medium">Mensal:</span>
+                      <span className="font-bold text-base">R$ {item.service_plans.monthly_fee.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-muted/30 rounded-md">
+                      <span className="text-muted-foreground font-medium">Setup:</span>
+                      <span className="font-bold text-base">R$ {item.service_plans.setup_fee.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2 bg-muted/30 rounded-md">
+                      <span className="text-muted-foreground font-medium">Prazo:</span>
+                      <Badge variant="secondary" className="font-semibold">
+                        {item.service_plans.delivery_time_days} dias
+                      </Badge>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -411,39 +438,51 @@ const ProposalView = () => {
         </div>
 
         {/* Service Details Accordion */}
-        <Card className="shadow-lg mb-8">
-          <CardHeader className="bg-gradient-subtle">
-            <CardTitle className="text-2xl">Detalhes dos Serviços</CardTitle>
+        <Card className="shadow-md">
+          <CardHeader className="border-b bg-muted/30">
+            <CardTitle className="text-2xl font-bold">Detalhes dos Serviços</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">Entregáveis e valores detalhados</p>
           </CardHeader>
           <CardContent className="p-6">
-            <Accordion type="single" collapsible className="w-full">
+            <Accordion type="single" collapsible className="w-full space-y-2">
               {proposal.proposal_items.map((item, index) => (
-                <AccordionItem key={index} value={`item-${index}`}>
-                  <AccordionTrigger className="text-lg font-semibold hover:text-primary">
-                    {item.service_plans.services.name} - {item.service_plans.plan_name}
+                <AccordionItem 
+                  key={index} 
+                  value={`item-${index}`}
+                  className="border rounded-lg px-4 bg-muted/20 hover:bg-muted/30 transition-colors"
+                >
+                  <AccordionTrigger className="text-base font-semibold hover:text-primary hover:no-underline py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <Package className="h-4 w-4 text-primary" />
+                      </div>
+                      <span>{item.service_plans.services.name} - {item.service_plans.plan_name}</span>
+                    </div>
                   </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-4 pt-4">
+                  <AccordionContent className="pb-4">
+                    <div className="space-y-4 pt-2 pl-12">
                       {item.service_plans.deliverables && (
-                        <div>
-                          <h4 className="font-semibold mb-2 flex items-center gap-2">
-                            <Package className="h-4 w-4 text-primary" /> Entregáveis
+                        <div className="p-4 bg-background rounded-lg border">
+                          <h4 className="font-semibold mb-2 text-sm uppercase tracking-wide text-muted-foreground">
+                            Entregáveis
                           </h4>
-                          <p className="text-muted-foreground pl-6">{item.service_plans.deliverables}</p>
+                          <p className="text-foreground leading-relaxed">
+                            {item.service_plans.deliverables}
+                          </p>
                         </div>
                       )}
-                      <div className="grid md:grid-cols-3 gap-4 pl-6">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Investimento Mensal</p>
-                          <p className="text-lg font-bold text-primary">R$ {item.service_plans.monthly_fee.toFixed(2)}</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="p-4 bg-background rounded-lg border">
+                          <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Valor Mensal</p>
+                          <p className="text-xl font-bold text-primary">
+                            R$ {item.service_plans.monthly_fee.toFixed(2)}
+                          </p>
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Taxa de Setup</p>
-                          <p className="text-lg font-bold">R$ {item.service_plans.setup_fee.toFixed(2)}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Tempo de Entrega</p>
-                          <p className="text-lg font-bold">{item.service_plans.delivery_time_days} dias úteis</p>
+                        <div className="p-4 bg-background rounded-lg border">
+                          <p className="text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide">Taxa de Setup</p>
+                          <p className="text-xl font-bold text-primary">
+                            R$ {item.service_plans.setup_fee.toFixed(2)}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -454,38 +493,54 @@ const ProposalView = () => {
           </CardContent>
         </Card>
 
-        {/* Campo de Observações */}
-        <ProposalObservations proposal={extendedProposal} setProposal={setProposal as any} />
+        {/* Observations Section */}
+        <Card className="shadow-md">
+          <CardHeader className="border-b bg-muted/30">
+            <CardTitle className="text-2xl font-bold">Observações</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">Notas e informações adicionais</p>
+          </CardHeader>
+          <CardContent className="p-6">
+            <ProposalObservations proposal={extendedProposal} setProposal={setProposal as any} />
+          </CardContent>
+        </Card>
 
         {/* Financial Summary */}
-        <Card className="shadow-lg bg-gradient-subtle overflow-hidden">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-3xl">Investimento Total</CardTitle>
+        <Card className="shadow-lg border-2 border-primary/20">
+          <CardHeader className="border-b bg-gradient-to-r from-primary/5 to-primary/10">
+            <CardTitle className="text-2xl font-bold">Resumo Financeiro</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">Valores e totalizadores da proposta</p>
           </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center p-4 bg-background rounded-lg">
-                  <span className="text-lg">Fee Mensal</span>
-                  <span className="text-2xl font-bold">R$ {proposal.total_monthly.toFixed(2)}</span>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              <div className="lg:col-span-3 space-y-3">
+                <div className="flex justify-between items-center p-4 bg-muted/30 rounded-lg border">
+                  <span className="font-medium text-muted-foreground">Total Mensal:</span>
+                  <span className="font-bold text-xl">R$ {proposal.total_monthly.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center p-4 bg-background rounded-lg">
-                  <span className="text-lg">Implementação</span>
-                  <span className="text-2xl font-bold">R$ {proposal.total_setup.toFixed(2)}</span>
+                <div className="flex justify-between items-center p-4 bg-muted/30 rounded-lg border">
+                  <span className="font-medium text-muted-foreground">Total Setup:</span>
+                  <span className="font-bold text-xl">R$ {proposal.total_setup.toFixed(2)}</span>
                 </div>
                 {proposal.discount_value > 0 && (
-                  <div className="flex justify-between items-center p-4 bg-destructive/10 rounded-lg">
-                    <span className="text-lg text-destructive">Desconto</span>
-                    <span className="text-2xl font-bold text-destructive">- R$ {proposal.discount_value.toFixed(2)}</span>
+                  <div className="flex justify-between items-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border-2 border-green-200 dark:border-green-800">
+                    <span className="font-medium text-green-700 dark:text-green-400">Desconto Aplicado:</span>
+                    <span className="font-bold text-xl text-green-700 dark:text-green-400">
+                      - R$ {proposal.discount_value.toFixed(2)}
+                    </span>
                   </div>
                 )}
               </div>
-
-              <div className="flex items-center justify-center">
-                <div className="text-center p-8 bg-primary/10 rounded-2xl border-2 border-primary/20">
-                  <p className="text-sm text-muted-foreground mb-2">Valor Total</p>
-                  <p className="text-5xl font-bold text-primary mb-4">R$ {finalTotal.toFixed(2)}</p>
-                  {oneTimeServices.length > 0 && <Badge variant="secondary" className="text-base px-4 py-2"><Clock className="h-4 w-4 mr-2" />Entrega em {totalDeliveryTime} dias</Badge>}
+              <div className="lg:col-span-2 flex items-center justify-center">
+                <div className="text-center p-8 bg-gradient-to-br from-primary to-primary/90 text-primary-foreground rounded-2xl shadow-elegant w-full">
+                  <p className="text-sm font-medium mb-3 opacity-90 uppercase tracking-wide">
+                    Valor Total
+                  </p>
+                  <p className="text-5xl font-bold mb-2">
+                    R$ {finalTotal.toFixed(2)}
+                  </p>
+                  <p className="text-xs opacity-80">
+                    {proposal.discount_value > 0 ? "Já com desconto aplicado" : "Valor final da proposta"}
+                  </p>
                 </div>
               </div>
             </div>
