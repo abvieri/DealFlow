@@ -16,6 +16,7 @@ import Users from "./pages/Users";
 import MigrateData from "./pages/MigrateData";
 import NotFound from "./pages/NotFound";
 import Clients from './pages/clients';
+import ProposalPreview from './components/pdf/ProposalPreview';
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/users" element={<Layout><Users /></Layout>} />
             <Route path="/migrate-data" element={<Layout><MigrateData /></Layout>} />
             <Route path="/clients" element={<Layout><Clients /></Layout>} />
+            <Route path="/proposal/preview" element={<Layout><ProposalPreview /></Layout>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
