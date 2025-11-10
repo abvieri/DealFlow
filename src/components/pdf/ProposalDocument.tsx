@@ -235,7 +235,7 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
               })}
             </Text>
           </View>
-          <Image src='/public/logovg.png' style={styles.logoImg} />
+          <Image src='/logovg.png' style={styles.logoImg} />
         </View>
 
         {/* CONTEÚDO */}
@@ -309,7 +309,7 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
                 <Text style={styles.totalValue}>{formatBRL(discount)}</Text>
               </View>
             )}
-            <View style={[styles.totalRow, { marginTop: 10 }]}>
+            <View style={[styles.totalRow, { marginTop: 15, fontSize: 12 }]}>
               <Text style={styles.totalLabel}>Valor Final</Text>
               <Text style={styles.totalValue}>{formatBRL(grandTotal)}</Text>
             </View>
