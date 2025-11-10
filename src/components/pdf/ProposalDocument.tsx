@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
 
   // Conteúdo
   section: {
-    marginBottom: 30,
+    marginBottom: 40,
   },
   sectionTitle: {
     fontSize: 14,
@@ -203,7 +203,6 @@ interface ProposalDocumentProps {
     company?: string;
   };
   items: Item[];
-  brandLogo?: string;
 }
 
 const formatBRL = (n: number) =>
@@ -213,7 +212,6 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
   proposalData,
   clientData,
   items,
-  brandLogo,
 }) => {
   const totalMonthly = items.reduce((s, it) => s + (it.monthly_fee || 0), 0);
   const totalSetup = items.reduce((s, it) => s + (it.setup_fee || 0), 0);
@@ -253,9 +251,22 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>2. Serviços e Entregáveis</Text>
-          <View style={styles.servicesGrid}>
+          <View
+            style={[
+              styles.servicesGrid,
+              items.length === 1 ? { flexDirection: "column" } : { flexDirection: "row", flexWrap: "wrap" },
+            ]}
+          >
             {items.map((item) => (
-              <View key={item.id} style={styles.serviceItem}>
+              <View
+                key={item.id}
+                style={[
+                  styles.serviceItem,
+                  items.length === 1
+                    ? { width: "100%", paddingRight: 0 }
+                    : { width: "50%", paddingRight: 10 },
+                ]}
+              >
                 <Text style={styles.serviceTitle}>{item.service_name}</Text>
                 <Text style={styles.serviceDesc}>
                   {item.description || "Descrição do serviço."}

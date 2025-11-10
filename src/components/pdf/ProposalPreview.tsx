@@ -26,7 +26,6 @@ export default function ProposalPreview() {
           proposalData={fakeProposal}
           clientData={fakeClient}
           items={fakeItems}
-          brandLogo="/logo-vierigroup.png"
         />
       </PDFViewer>
     </div>
